@@ -78,6 +78,15 @@ semantic versioning.
   remain pending.
 - `sim.standard_rows` exposes the ordinary world generator with run-seed and δ
   overrides and stays byte-identical to `world.game_rows()` at default settings.
+- SC4 misspecified generator with ordered-pair agent × deck and agent ×
+  opponent effects and a deterministic kingmaker penalty (ADR 0005); the
+  report check shows SDWP ordering is field-invariant while field values differ.
+- A 50-replication SC1/SC2 `ci_smoke` study now runs in the CI `stat` job.
+  SC1 pooled coverage passes; SC2 pooled coverage is 0.9095 and misses the
+  [0.93, 0.97] target, recorded with its bias and per-quantity results in ADR
+  0006. The 1,000-replication `standard` release run remains pending.
+- Field context/recipe validation tests cover the malformed-context and
+  malformed-recipe branches.
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

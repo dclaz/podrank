@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import pytest
 
 from podrank import sim
@@ -154,3 +156,29 @@ def test_sc1_study_smoke() -> None:
         assert abs(quantity.mean_bias) < 10.0
     assert isinstance(report.target_misses(), tuple)
     assert isinstance(report.low_coverage(), tuple)
+
+
+@pytest.mark.stat
+@pytest.mark.parametrize(("scenario", "rho_div"), [("SC1", None), ("SC2", 0.0)])
+def test_ci_smoke_study_reports(scenario: str, rho_div: float | None) -> None:
+    report = run_study(
+        scenario,
+        world_name="ci_smoke",
+        replications=50,
+        bootstrap_replicates=100,
+        seed=202,
+        rho_div=rho_div,
+    )
+    assert report.replications == 50
+    assert report.failed_replications == 0
+    assert report.n_scored > 0
+    assert report.n_emitted > 0
+    assert 0.0 <= (report.pooled_coverage or 0.0) <= 1.0
+    misses = report.target_misses()
+    assert isinstance(misses, tuple)
+    if misses:
+        warnings.warn(
+            f"{scenario} ci_smoke release-review misses: {misses}",
+            UserWarning,
+            stacklevel=1,
+        )

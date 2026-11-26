@@ -50,6 +50,9 @@ class _Context:
     seats: tuple[float, ...]
     run_seed: int
     rho_div: float
+    agent_deck: Mapping[tuple[str, str], float] | None = None
+    agent_opponent: Mapping[tuple[str, str], float] | None = None
+    kingmaker_penalty: float = 0.0
 
 
 def _context(
@@ -58,6 +61,9 @@ def _context(
     run_seed: int | None = None,
     deck_effects: Mapping[str, float] | None = None,
     rho_div: float | None = None,
+    agent_deck: Mapping[tuple[str, str], float] | None = None,
+    agent_opponent: Mapping[tuple[str, str], float] | None = None,
+    kingmaker_penalty: float = 0.0,
 ) -> _Context:
     return _Context(
         world=world,
@@ -69,6 +75,9 @@ def _context(
         seats=world.seats,
         run_seed=world.seed if run_seed is None else run_seed,
         rho_div=world.rho_div if rho_div is None else rho_div,
+        agent_deck=agent_deck,
+        agent_opponent=agent_opponent,
+        kingmaker_penalty=kingmaker_penalty,
     )
 
 
@@ -123,7 +132,7 @@ def _utilities(
     bracket: int,
 ) -> np.ndarray:
     mu = context.mu[bracket]
-    return np.array(
+    utilities = np.array(
         [
             context.theta[agents_seated[seat]]
             + mu
@@ -133,6 +142,22 @@ def _utilities(
         ],
         dtype=np.float64,
     )
+    if context.agent_deck is not None:
+        for seat in range(4):
+            utilities[seat] += context.agent_deck.get(
+                (agents_seated[seat], decks_seated[seat]), 0.0
+            )
+    if context.agent_opponent is not None:
+        for seat in range(4):
+            own = agents_seated[seat]
+            utilities[seat] += sum(
+                context.agent_opponent.get((own, other), 0.0)
+                for other in agents_seated
+                if other != own
+            )
+    if context.kingmaker_penalty:
+        utilities[int(np.argmax(utilities))] -= context.kingmaker_penalty
+    return utilities
 
 
 def _sampled_outcome(
@@ -464,22 +489,8 @@ def sc3_rows(
     return rows
 
 
-def standard_rows(
-    world: SimWorld,
-    *,
-    run_seed: int | None = None,
-    deck_effects: Mapping[str, float] | None = None,
-    rho_div: float | None = None,
-) -> list[dict[str, object]]:
-    """Generate one ordinary ``standard``-style replication.
-
-    The composition and outcome streams are keyed by ``run_seed`` so a study can
-    use an independent replication seed. ``deck_effects`` overrides the world's
-    δ (SC1/SC2 redraw it from the prior) and ``rho_div`` overrides the shared-luck
-    probability (SC2 uses zero).
-    """
-
-    context = _context(world, run_seed=run_seed, deck_effects=deck_effects, rho_div=rho_div)
+def _ordinary_rows(context: _Context) -> list[dict[str, object]]:
+    world = context.world
     allowed_decks = {
         bracket: [deck for deck in world.deck_ids if context.decks.by_id[deck].bracket == bracket]
         for bracket in range(world.brackets)
@@ -496,6 +507,79 @@ def standard_rows(
             )
         )
     return rows
+
+
+def standard_rows(
+    world: SimWorld,
+    *,
+    run_seed: int | None = None,
+    deck_effects: Mapping[str, float] | None = None,
+    rho_div: float | None = None,
+) -> list[dict[str, object]]:
+    """Generate one ordinary ``standard``-style replication.
+
+    The composition and outcome streams are keyed by ``run_seed`` so a study can
+    use an independent replication seed. ``deck_effects`` overrides the world's
+    δ (SC1/SC2 redraw it from the prior) and ``rho_div`` overrides the shared-luck
+    probability (SC2 uses zero).
+    """
+
+    return _ordinary_rows(
+        _context(world, run_seed=run_seed, deck_effects=deck_effects, rho_div=rho_div)
+    )
+
+
+def sc4_interactions(
+    world: SimWorld, seed: int, replication: int = 0
+) -> tuple[dict[tuple[str, str], float], dict[tuple[str, str], float]]:
+    """Draw the SC4 agent × deck and agent × opponent effects.
+
+    Effects are independent ``N(0, 0.3²)`` draws on the ordered pairs, from the
+    study stream ``SeedSequence(seed, spawn_key=(4, replication))``.
+    """
+
+    rng = np.random.Generator(
+        np.random.PCG64(np.random.SeedSequence(seed, spawn_key=(4, replication)))
+    )
+    agent_deck = {
+        (agent, deck): float(rng.normal(0.0, 0.3))
+        for agent in world.agent_ids
+        for deck in world.deck_ids
+    }
+    agent_opponent = {
+        (agent, opponent): float(rng.normal(0.0, 0.3))
+        for agent in world.agent_ids
+        for opponent in world.agent_ids
+        if opponent != agent
+    }
+    return agent_deck, agent_opponent
+
+
+def sc4_rows(
+    world: SimWorld,
+    *,
+    seed: int | None = None,
+    replication: int = 0,
+    run_seed: int | None = None,
+    kingmaker_penalty: float = 0.2,
+) -> list[dict[str, object]]:
+    """Generate one SC4 misspecified replication.
+
+    Adds the SC4 agent × deck and agent × opponent effects and subtracts the
+    kingmaker penalty from the leading seat's utility before the Gumbel draw.
+    """
+
+    resolved_seed = world.seed if seed is None else seed
+    agent_deck, agent_opponent = sc4_interactions(world, resolved_seed, replication)
+    return _ordinary_rows(
+        _context(
+            world,
+            run_seed=run_seed,
+            agent_deck=agent_deck,
+            agent_opponent=agent_opponent,
+            kingmaker_penalty=kingmaker_penalty,
+        )
+    )
 
 
 def pinned_deck_rows(

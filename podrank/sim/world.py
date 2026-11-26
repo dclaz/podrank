@@ -210,7 +210,7 @@ class SimWorld:
                 )
         return rows
 
-    def field(self, n_contexts: int = 24) -> Field:
+    def field(self, n_contexts: int = 24, *, seed: int | None = None) -> Field:
         decks = self.deck_registry()
         recipe = {
             "field_id": "sim_field",
@@ -230,7 +230,7 @@ class SimWorld:
                 },
                 "focal_seat": "uniform",
                 "n_contexts": n_contexts,
-                "seed": self.seed,
+                "seed": self.seed if seed is None else seed,
             },
         }
         return Field.materialise(recipe, decks=decks)

@@ -220,6 +220,36 @@ def test_sc7_pinned_deck_aliasing() -> None:
     assert sdwp_agents.isdisjoint(pinned)
 
 
+def test_sc4_misspecified_generator_and_field_invariance() -> None:
+    world = sim.reference_world("standard")
+    rows = sim.sc4_rows(world)
+    assert rows == sim.sc4_rows(world)
+    assert rows != sim.sc4_rows(world, replication=1)
+    assert rows != sim.standard_rows(world)
+    assert rows != sim.sc4_rows(world, kingmaker_penalty=0.0)
+
+    agent_deck, agent_opponent = sim.sc4_interactions(world, world.seed)
+    assert len(agent_deck) == len(world.agent_ids) * len(world.deck_ids)
+    assert len(agent_opponent) == len(world.agent_ids) * (len(world.agent_ids) - 1)
+
+    post = fit(GameTable.from_records(rows), world.agent_registry(), world.deck_registry())
+    first = world.field(400)
+    second = world.field(400, seed=world.seed + 1)
+    sdwp_first = {row.agent_id: row.sdwp for row in post.sdwp(first).rows}
+    sdwp_second = {row.agent_id: row.sdwp for row in post.sdwp(second).rows}
+    order_first = sorted(sdwp_first, key=lambda agent: (-sdwp_first[agent], agent))
+    order_second = sorted(sdwp_second, key=lambda agent: (-sdwp_second[agent], agent))
+    assert order_first == order_second
+    assert any(abs(sdwp_first[agent] - sdwp_second[agent]) > 1e-12 for agent in sdwp_first)
+
+    log_worth = {
+        row.agent_id: row.value
+        for row in post.log_worth()
+        if row.agent_id in sdwp_first and row.value is not None
+    }
+    assert order_first == sorted(order_first, key=lambda agent: (-log_worth[agent], agent))
+
+
 def test_sc7_generator_rejects_broken_designs() -> None:
     world = sim.reference_world("ci_smoke")
     pinned = sim.pinned_roles(world)

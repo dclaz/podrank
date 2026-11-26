@@ -41,6 +41,23 @@ jobs:
 
       - run: uv run --locked --python ${{ matrix.python-version }} mkdocs build --strict
 
+  stat:
+    name: Statistical smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - run: uv python install 3.12
+
+      - run: uv sync --locked --group dev --python 3.12
+
+      - run: uv run --locked --python 3.12 pytest -q -m stat
+
   windows-smoke:
     name: Windows smoke
     runs-on: windows-latest

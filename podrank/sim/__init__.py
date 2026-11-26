@@ -10,6 +10,8 @@ from podrank.sim.scenarios import (
     pinned_roles,
     sc3_roles,
     sc3_rows,
+    sc4_interactions,
+    sc4_rows,
     sc7_rows,
     standard_rows,
 )
@@ -27,6 +29,8 @@ __all__ = [
     "reference_world",
     "sc3_roles",
     "sc3_rows",
+    "sc4_interactions",
+    "sc4_rows",
     "sc7_rows",
     "standard_rows",
 ]

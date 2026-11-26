@@ -834,6 +834,9 @@ The library itself is count-agnostic (§20), but its **simulations, examples, do
 | SC7 | `agent_18` plays only `deck_b1_00` and `agent_19` only `deck_b2_00`, each deck exclusive to its agent (pinned-deck generator, below) |
 | SC8 | every game involving `agent_00` is a draw |
 
+SC4's ordered-pair interaction formula, draw stream and kingmaker tie rule are
+pinned in `docs/decisions/0005-sc4-generator.md`; SC4 remains report-only.
+
 **Pinned-deck generator (SC3, SC7).** These scenarios need an agent whose skill is genuinely inseparable from a deck. The standard rotation generator would move every agent through all four decks of a cluster, adding exactly the crossover games that remove the aliasing. So for each pinned agent a with pinned deck d:
 - **a plays only d, and d is played only by a** (the deck is exclusive to its agent). Pods that contain a always include d, drawn from d's bracket; pods without a never include d. At most one pinned agent per cluster.
 - In each rotation, a sits in whichever seat holds d. Order the other agents and remaining seats initially, then cyclically shift those agents by `r % 3` in rotation r = 0, 1, 2, 3. In `ci_smoke` SC3, ordinary clusters use the six non-sparse, non-pinned agents; include the anchor in the first reserved cluster for each sparse or pinned agent. In all worlds check connectivity and the stated D4 condition before scoring simulation results.
@@ -879,6 +882,8 @@ Each scenario is frozen in `sim/scenarios/` with its seed, size, field and a **p
 **Coverage is conditional on an interval being emitted.** Each scenario also reports the **emission rate** (intervals emitted / quantities scored); suppressed intervals don't count as misses or hits.
 
 **Bias** is reported **per estimand** (never pooled across estimands, so signs can't cancel), with a practical tolerance rather than a Monte Carlo test: `|mean bias|` ≤ 0.05 in log-worth units and ≤ 1.0 percentage point in SDWP for each scored quantity. Coverage is reported pooled **and** per quantity; the pooled range is the target, and any single quantity below 90% is called out in the release review.
+
+The 50-replication `ci_smoke` SC1/SC2 results are recorded in `docs/decisions/0006-sc1-sc2-ci-smoke.md`. They are an operating characteristic of the small CI study, not a release sign-off; the 1,000-replication `standard` run remains the release gate.
 
 | Scenario | Setup | Check |
 |---|---|---|
