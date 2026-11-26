@@ -1,0 +1,9 @@
+{
+  "name": "doc_tiny_balanced",
+  "seed": 101,
+  "agents": 6,
+  "brackets": 3,
+  "decks_per_bracket": 4,
+  "clusters": 60,
+  "balanced": true
+}

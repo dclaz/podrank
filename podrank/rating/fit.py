@@ -12,7 +12,7 @@ from podrank.data.inclusion import Inclusion, run_pipeline
 from podrank.data.registry import AgentRegistry, DeckRegistry
 from podrank.data.table import GameTable
 from podrank.errors import ModelTooLargeError, SwapsNotModelledError
-from podrank.rating.design import ParameterIndex, build_patterns
+from podrank.rating.design import ParameterIndex, PatternTable, build_patterns
 from podrank.rating.identification import (
     ContrastContext,
     build_components,
@@ -29,7 +29,7 @@ from podrank.rating.likelihood import (
     objective_hess,
 )
 from podrank.rating.posterior import Posterior, Provenance, build_outcome_rates
-from podrank.rating.solve import newton
+from podrank.rating.solve import SolveResult, newton
 from podrank.rating.spec import ModelSpec
 from podrank.types import ClusterKey
 
@@ -104,6 +104,56 @@ def _validate_cluster_strata(
         for _key, label in values.items():
             if not isinstance(label, str) or not label:
                 raise ValueError(f"cluster_strata[{column!r}] labels must be non-empty strings")
+
+
+def solve_patterns(
+    patterns: PatternTable,
+    precision: np.ndarray,
+    initial: np.ndarray,
+    *,
+    decrement_scale: float,
+) -> SolveResult:
+    """Solve one compressed likelihood table from a supplied start point."""
+
+    cache: dict[str, object] = {
+        "psi": None,
+        "utilities": None,
+        "probabilities": None,
+    }
+
+    def evaluate(psi: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
+        evaluation = compact_evaluate(psi, patterns, precision, cache=True)
+        cache["psi"] = psi.copy()
+        cache["utilities"] = evaluation.utilities
+        cache["probabilities"] = evaluation.probabilities
+        return evaluation.objective, evaluation.gradient, evaluation.hessian
+
+    def delta(psi: np.ndarray, step: np.ndarray) -> float:
+        cached_psi = cache["psi"]
+        if isinstance(cached_psi, np.ndarray) and np.array_equal(psi, cached_psi):
+            utilities = cache["utilities"]
+            probabilities = cache["probabilities"]
+            assert isinstance(utilities, np.ndarray)
+            assert isinstance(probabilities, np.ndarray)
+            return objective_delta(
+                psi,
+                step,
+                patterns,
+                precision,
+                utilities_cache=utilities,
+                probabilities_cache=probabilities,
+            )
+        return objective_delta(psi, step, patterns, precision)
+
+    return newton(
+        lambda psi: objective(psi, patterns, precision),
+        lambda psi: objective_grad(psi, patterns, precision),
+        lambda psi: objective_hess(psi, patterns, precision),
+        initial,
+        objective_delta=delta,
+        decrement_scale=decrement_scale,
+        evaluate=evaluate,
+    )
 
 
 def fit(
@@ -187,44 +237,11 @@ def fit(
     )
     outcome_rates = build_outcome_rates(pipeline.eligible_rows)
 
-    cache: dict[str, object] = {
-        "psi": None,
-        "utilities": None,
-        "probabilities": None,
-    }
-
-    def evaluate(psi: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
-        evaluation = compact_evaluate(psi, patterns, precision, cache=True)
-        cache["psi"] = psi.copy()
-        cache["utilities"] = evaluation.utilities
-        cache["probabilities"] = evaluation.probabilities
-        return evaluation.objective, evaluation.gradient, evaluation.hessian
-
-    def delta(psi: np.ndarray, step: np.ndarray) -> float:
-        cached_psi = cache["psi"]
-        if isinstance(cached_psi, np.ndarray) and np.array_equal(psi, cached_psi):
-            utilities = cache["utilities"]
-            probabilities = cache["probabilities"]
-            assert isinstance(utilities, np.ndarray)
-            assert isinstance(probabilities, np.ndarray)
-            return objective_delta(
-                psi,
-                step,
-                patterns,
-                precision,
-                utilities_cache=utilities,
-                probabilities_cache=probabilities,
-            )
-        return objective_delta(psi, step, patterns, precision)
-
-    solution = newton(
-        lambda psi: objective(psi, patterns, precision),
-        lambda psi: objective_grad(psi, patterns, precision),
-        lambda psi: objective_hess(psi, patterns, precision),
+    solution = solve_patterns(
+        patterns,
+        precision,
         initial,
-        objective_delta=delta,
         decrement_scale=max(1.0, float(len(pipeline.likelihood_rows))),
-        evaluate=evaluate,
     )
 
     row_space = row_space_basis(patterns, spec.tol_eig)

@@ -17,3 +17,4 @@ nav:
       - P1 data surfaces: decisions/0001-p1-data-surfaces.md
       - P2 performance spike: decisions/0002-p2-performance-spike.md
       - Posterior archive: decisions/0003-posterior-archive.md
+      - Bootstrap workers: decisions/0004-bootstrap-workers.md

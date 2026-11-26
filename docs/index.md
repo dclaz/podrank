@@ -6,8 +6,13 @@ Documentation scaffold for `podrank`. The implementation is currently in the
 contrasts and eligibility, fields, SDWP, prediction and persistence are
 available. The §12 cold-fit and SDWP targets pass on the local synthetic
 `perf_large` proxy; the official 16-core reference run is still required, and
-end-to-end time is dominated by I0. The comparison API is not exposed yet.
-Details are recorded in `docs/decisions/0002-p2-performance-spike.md`.
+end-to-end time is dominated by I0. The P3 cluster-bootstrap core is available
+under `podrank.uncertainty`, and the `doc_tiny_balanced` vertical slice passes;
+serial, Linux `fork` and Linux `spawn` bootstrap parity is tested. Windows
+`spawn`, SC1–SC8 scenario gates and the 16-core bootstrap benchmark remain
+pending. The comparison API is not exposed yet. Details are recorded in
+`docs/decisions/0002-p2-performance-spike.md` and
+`docs/decisions/0004-bootstrap-workers.md`.
 
 ## Where the specification lives
 

@@ -43,6 +43,28 @@ semantic versioning.
 - I0 dedup now encodes canonical row bytes only for repeated `game_id`s and
   streams the canonical JSON array into SHA-256. Local 1M I0: 43.38 s → 33.75 s.
 
+### Added
+
+- P3 cluster-bootstrap core: compact-frame multinomial resampling, stratified
+  resampling, frozen-index warm-start refits, B4/B5 suppression gates, B6
+  percentiles, contrast/log-worth/seat/deck/swap/SDWP bootstrap reports and
+  diagnostics under `podrank.uncertainty`.
+- Bootstrap smoke tests for frame state, stratification, crossing rejection,
+  failed replicates, entity gates and unavailable deck baselines.
+- `podrank.sim.reference_world("doc_tiny_balanced")` with the frozen 60-cluster
+  world, 24-context `sim_field`, and the end-to-end records → fit → eligibility
+  → SDWP → 100-replicate bootstrap vertical slice.
+- Controlled F6-style frozen-index/prior-only and F18-style gate precedence
+  tests, including real deck-support B4 and all-failed B5 extension cases.
+- Collision-safe tuple diagnostics keys for contrast, log-worth and
+  field-hash-keyed SDWP.
+- Standard-library process-pool bootstrap execution with picklable worker
+  state, replicate-index RNG streams, ordered results and serial/Linux
+  `fork`/Linux `spawn` parity tests.
+- `workers=1` remains the no-pool default; worker-count changes are tested not
+  to alter statistical results. ADR 0004 records the API and the benchmark-only
+  BLAS one-thread policy.
+
 ### Changed
 
 - CI now runs the test suite under coverage on both Linux Python versions.

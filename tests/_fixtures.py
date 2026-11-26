@@ -15,6 +15,7 @@ AGENT_VERSIONS = {
     "D": "D1",
     "E": "E1",
     "F": "F1",
+    "X": "X1",
     "Z": "Z1",
 }
 AGENT_ORDER = ("C", "A", "H", "B")
