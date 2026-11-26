@@ -7,7 +7,16 @@ from datetime import UTC, datetime
 
 from podrank import AgentRegistry, DeckRegistry
 
-AGENT_VERSIONS = {"H": "H1", "A": "A1", "B": "B1", "C": "C1", "D": "D1"}
+AGENT_VERSIONS = {
+    "H": "H1",
+    "A": "A1",
+    "B": "B1",
+    "C": "C1",
+    "D": "D1",
+    "E": "E1",
+    "F": "F1",
+    "Z": "Z1",
+}
 AGENT_ORDER = ("C", "A", "H", "B")
 
 

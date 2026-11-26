@@ -496,15 +496,21 @@ def run_pipeline(
 
     # I0 step 2: exact-duplicate removal; conflicting IDs are errors.
     deduplicated: list[tuple[int, GameRow]] = []
-    seen: dict[str, tuple[GameRow, str]] = {}
+    seen: dict[str, GameRow] = {}
+    encoded_first: dict[str, str] = {}
     exact_duplicates = 0
     for index, row in normalised:
-        encoded = canonical_row_json(row)
         previous = seen.get(row.game_id)
         if previous is None:
-            seen[row.game_id] = (row, encoded)
+            seen[row.game_id] = row
             deduplicated.append((index, row))
-        elif previous[1] == encoded:
+            continue
+        first_encoded = encoded_first.get(row.game_id)
+        if first_encoded is None:
+            first_encoded = canonical_row_json(previous)
+            encoded_first[row.game_id] = first_encoded
+        encoded = canonical_row_json(row)
+        if first_encoded == encoded:
             exact_duplicates += 1
             message = f"game {row.game_id!r} was supplied more than once; duplicate removed"
             warning_messages.append(message)

@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 import pytest
 
 from podrank import GameTable, Inclusion
+from podrank.data import inclusion as inclusion_module
 from podrank.data.inclusion import run_pipeline
 from podrank.errors import DuplicateRowWarning
 from tests._fixtures import f7_rows, make_game, registries
@@ -85,6 +86,24 @@ def test_data_hash_changes_for_an_excluded_audited_row() -> None:
 
     assert after.counts.eligible == before.counts.eligible
     assert after.data_hash != before.data_hash
+
+
+def test_dedup_encodes_only_repeated_game_ids(monkeypatch) -> None:
+    calls: list[str] = []
+    original = inclusion_module.canonical_row_json
+
+    def spy(row):
+        calls.append(row.game_id)
+        return original(row)
+
+    monkeypatch.setattr(inclusion_module, "canonical_row_json", spy)
+    run(f7_rows())
+    assert calls == []
+
+    calls.clear()
+    with pytest.warns(DuplicateRowWarning):
+        run([make_game("g1"), make_game("g1")])
+    assert calls == ["g1", "g1"]
 
 
 def test_data_hash_uses_canonical_utc_timestamps() -> None:

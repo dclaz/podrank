@@ -43,6 +43,7 @@ dev = [
     "pytest-benchmark>=4.0",
     "pytest-xdist>=3.6",
     "ruff>=0.7",
+    "scipy-stubs>=1.13",
 ]
 
 [tool.hatch.version]

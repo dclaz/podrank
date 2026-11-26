@@ -1,9 +1,13 @@
 # podrank
 
-Documentation scaffold for `podrank`. The implementation is currently at the
-**P1 data** phase: immutable registry snapshots, the order-preserving
-`GameTable`, `validate`, and the shared I0–I5 `Inclusion` pipeline are available.
-The rating and comparison APIs are not exposed yet.
+Documentation scaffold for `podrank`. The implementation is currently in the
+**P2 rating core** phase: immutable registry snapshots, the order-preserving
+`GameTable`, `validate`, the I0–I5 `Inclusion` pipeline, `fit`, posterior
+contrasts and eligibility, fields, SDWP, prediction and persistence are
+available. The §12 cold-fit and SDWP targets pass on the local synthetic
+`perf_large` proxy; the official 16-core reference run is still required, and
+end-to-end time is dominated by I0. The comparison API is not exposed yet.
+Details are recorded in `docs/decisions/0002-p2-performance-spike.md`.
 
 ## Where the specification lives
 

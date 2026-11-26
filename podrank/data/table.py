@@ -8,6 +8,7 @@ normalises rows into :class:`GameRow`; I0 step 2 removes exact duplicates.
 from __future__ import annotations
 
 import copy
+import hashlib
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -15,7 +16,7 @@ from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import cast
 
-from podrank.data._canonical import canonical_json, json_value, sha256_hex
+from podrank.data._canonical import canonical_json, json_value
 from podrank.errors import ValidationError
 from podrank.types import GameRow, Outcome, Role
 
@@ -294,10 +295,18 @@ def canonical_row_json(row: GameRow) -> str:
 
 
 def compute_data_hash(rows: Sequence[GameRow]) -> str:
-    """Hash the canonical rows after deduplication, sorted by ``game_id``."""
+    """Stream the exact canonical JSON array into SHA-256, sorted by ``game_id``."""
 
-    ordered = sorted(rows, key=lambda row: row.game_id)
-    return sha256_hex(canonical_json([canonical_row_payload(row) for row in ordered]))
+    digest = hashlib.sha256()
+    digest.update(b"[")
+    first = True
+    for row in sorted(rows, key=lambda item: item.game_id):
+        if not first:
+            digest.update(b",")
+        first = False
+        digest.update(canonical_json(canonical_row_payload(row)).encode("utf-8"))
+    digest.update(b"]")
+    return digest.hexdigest()
 
 
 __all__ = [

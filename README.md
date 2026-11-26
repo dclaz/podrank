@@ -14,10 +14,15 @@ R1 never depends on `podrank.compare`.
 
 ## Status
 
-**P1 data layer.** The package provides immutable `AgentRegistry` and
-`DeckRegistry` snapshots, an order-preserving `GameTable`, `validate`, and the
-shared I0–I5 inclusion pipeline (`Inclusion`). The rating (`fit`) and comparison
-APIs are not implemented yet. Implementation phases follow
+**P2 rating core implemented.** The package provides immutable `AgentRegistry`
+and `DeckRegistry` snapshots, an order-preserving `GameTable`, `validate`, the
+shared I0–I5 inclusion pipeline, and the R1 rating core: `fit`, posterior
+contrasts/components/eligibility, reference fields, SDWP, prediction and
+persistence. The §12 cold-fit and SDWP targets pass on the local synthetic
+`perf_large` proxy; the official 16-core reference run is still required, and
+end-to-end time is currently dominated by I0. See
+[`docs/decisions/0002-p2-performance-spike.md`](docs/decisions/0002-p2-performance-spike.md).
+The comparison API is not implemented. Implementation phases follow
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) §15.
 
 ## Development
