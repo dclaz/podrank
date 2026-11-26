@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from podrank import GameTable, fit, sim
+from podrank import GameTable, fit, sim, uncertainty
 from podrank.errors import NoRankableEvidence
 from podrank.rating.identification import AnchorUnsupported
 from tests._fixtures import make_game
@@ -97,6 +97,71 @@ def test_pinned_roles_follow_world_size() -> None:
     }
     with pytest.raises(ValueError, match="pinned-deck roles"):
         sim.pinned_roles(sim.reference_world("doc_tiny"))
+
+
+def test_sc3_sparse_support_flags() -> None:
+    world = sim.reference_world("standard")
+    sparse, pinned = sim.sc3_roles(world)
+    assert sparse == {"agent_17": 3, "agent_18": 6, "agent_19": 12}
+    assert pinned == {"agent_16": "deck_b1_00"}
+    assert sim.sc3_roles(sim.reference_world("ci_smoke")) == (
+        {"agent_07": 3, "agent_08": 6, "agent_09": 12},
+        {"agent_06": "deck_b1_00"},
+    )
+    with pytest.raises(ValueError, match="SC3 roles"):
+        sim.sc3_roles(sim.reference_world("doc_tiny"))
+
+    rows = sim.sc3_rows(world)
+    assert len({row["cluster_id"] for row in rows}) == world.clusters
+    sim.assert_pinned_design(world, rows, pinned)
+
+    # Exact likelihood-bearing counts: sparse agents appear only in their
+    # reserved clusters, rotation 0 is forced decisive, and the pinned agent
+    # gets its 30-cluster reserve.
+    for agent, count in sparse.items():
+        decisive = {
+            str(row["cluster_id"])
+            for row in rows
+            if row["outcome"] == "win" and agent in row["agents"]  # type: ignore[operator]
+        }
+        assert len(decisive) == count
+    for agent, deck in pinned.items():
+        decisive = {
+            str(row["cluster_id"])
+            for row in rows
+            if row["outcome"] == "win" and agent in row["agents"]  # type: ignore[operator]
+        }
+        assert len(decisive) == 30
+        assert all(
+            row["decks"][row["agents"].index(agent)] == deck  # type: ignore[union-attr]
+            for row in rows
+            if agent in row["agents"]  # type: ignore[operator]
+        )
+
+    post = fit(GameTable.from_records(rows), world.agent_registry(), world.deck_registry())
+
+    log_worth = {row.agent_id: row for row in post.log_worth()}
+    for agent in pinned:
+        assert log_worth[agent].status == "aliased"
+        assert log_worth[agent].interval is None
+    for agent in sparse:
+        assert log_worth[agent].status in {"weak", "identified"}
+
+    boot = uncertainty.cluster_bootstrap(post, n=8, seed=9, min_clusters=50, min_entity_clusters=10)
+    for agent, count in sparse.items():
+        result = boot.contrast(agent, "agent_00")
+        assert result.status in {"weak", "identified"}
+        if count < 10:
+            assert result.interval is None
+            assert "insufficient_clusters" in result.labels
+        else:
+            assert result.interval is not None
+            assert result.interval.method == "cluster_bootstrap"
+
+    anchor = boot.contrast("agent_00", "agent_00")
+    assert anchor.status == "zero"
+    assert anchor.interval is not None
+    assert (anchor.interval.lo, anchor.interval.hi) == (0.0, 0.0)
 
 
 def test_sc7_pinned_deck_aliasing() -> None:

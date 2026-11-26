@@ -25,6 +25,19 @@ _PINNED_BY_AGENT_COUNT: dict[int, dict[str, str]] = {
     10: {"agent_08": "deck_b1_00", "agent_09": "deck_b2_00"},
 }
 
+# Role mapping from §11.2 for SC3: sparse agent -> reserved cluster count and
+# pinned agent -> exclusive deck.
+_SC3_BY_AGENT_COUNT: dict[int, tuple[dict[str, int], dict[str, str]]] = {
+    20: (
+        {"agent_17": 3, "agent_18": 6, "agent_19": 12},
+        {"agent_16": "deck_b1_00"},
+    ),
+    10: (
+        {"agent_07": 3, "agent_08": 6, "agent_09": 12},
+        {"agent_06": "deck_b1_00"},
+    ),
+}
+
 
 @dataclass(frozen=True, slots=True)
 class _Context:
@@ -56,6 +69,16 @@ def pinned_roles(world: SimWorld) -> dict[str, str]:
         return dict(_PINNED_BY_AGENT_COUNT[world.agents])
     except KeyError as error:
         raise ValueError(f"no pinned-deck roles for a world with {world.agents} agents") from error
+
+
+def sc3_roles(world: SimWorld) -> tuple[dict[str, int], dict[str, str]]:
+    """Return the SC3 sparse and pinned role mappings for a reference world."""
+
+    try:
+        sparse, pinned = _SC3_BY_AGENT_COUNT[world.agents]
+    except KeyError as error:
+        raise ValueError(f"no SC3 roles for a world with {world.agents} agents") from error
+    return dict(sparse), dict(pinned)
 
 
 def _row(
@@ -268,6 +291,164 @@ def _ordinary_cluster(
                 winner,
             )
         )
+    return rows
+
+
+def _sparse_cluster(
+    context: _Context,
+    cluster_index: int,
+    cluster_id: str,
+    sparse_agent: str,
+    ordinary_agents: Sequence[str],
+    allowed_decks: Mapping[int, Sequence[str]],
+    *,
+    include_anchor: bool,
+) -> list[dict[str, object]]:
+    world = context.world
+    composition = np.random.Generator(
+        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(1, cluster_index)))
+    )
+    bracket = int(composition.integers(0, world.brackets))
+    deck_pool = list(allowed_decks[bracket])
+    if len(deck_pool) < 4:
+        raise ValueError("scenario bracket has fewer than four usable decks")
+    ordered_decks = [
+        str(deck_pool[int(index)])
+        for index in composition.choice(len(deck_pool), size=4, replace=False)
+    ]
+    if include_anchor and "agent_00" in ordinary_agents:
+        first = "agent_00"
+        remaining = [agent for agent in ordinary_agents if agent != first]
+        others = [
+            first,
+            *(str(agent) for agent in composition.choice(remaining, size=2, replace=False)),
+        ]
+    else:
+        others = [
+            str(agent) for agent in composition.choice(list(ordinary_agents), size=3, replace=False)
+        ]
+    ordered_agents = [sparse_agent, *others]
+
+    gumbel_rng = np.random.Generator(
+        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(2, cluster_index)))
+    )
+    base_gumbel = gumbel_rng.gumbel(size=4)
+
+    rows: list[dict[str, object]] = []
+    for rotation in range(4):
+        seated_agents = [ordered_agents[(position + rotation) % 4] for position in range(4)]
+        utilities = _utilities(context, seated_agents, ordered_decks, bracket)
+        outcome, winner = _sampled_outcome(
+            context,
+            cluster_index,
+            rotation,
+            utilities,
+            base_gumbel,
+            gumbel_rng,
+            force_decisive=rotation == 0,
+        )
+        rows.append(
+            _row(
+                context,
+                cluster_index,
+                cluster_id,
+                rotation,
+                seated_agents,
+                ordered_decks,
+                outcome,
+                winner,
+            )
+        )
+    return rows
+
+
+def sc3_rows(
+    world: SimWorld,
+    *,
+    pinned_reserved: int = 30,
+    ordinary: int | None = None,
+) -> list[dict[str, object]]:
+    """Generate the SC3 sparse-support variant of a reference world.
+
+    Twenty-one clusters are reserved across the three sparse agents, a fourth
+    agent is pinned to an exclusive deck, and ordinary clusters exclude every
+    sparse or pinned agent and the pinned deck.
+    """
+
+    sparse, pinned = sc3_roles(world)
+    pinned_decks = set(pinned.values())
+    sparse_agents = set(sparse)
+    pinned_agents = set(pinned)
+    ordinary_agents = [
+        agent
+        for agent in world.agent_ids
+        if agent not in sparse_agents and agent not in pinned_agents
+    ]
+    if len(ordinary_agents) < 4:
+        raise ValueError("SC3 needs at least four ordinary agents")
+    for agent, deck in pinned.items():
+        if agent not in world.agent_ids:
+            raise ValueError(f"unknown pinned agent {agent!r}")
+        if deck not in world.deck_ids:
+            raise ValueError(f"unknown pinned deck {deck!r}")
+    for agent in sparse:
+        if agent not in world.agent_ids:
+            raise ValueError(f"unknown sparse agent {agent!r}")
+
+    reserved_total = sum(sparse.values()) + pinned_reserved * len(pinned)
+    if ordinary is None:
+        ordinary = world.clusters - reserved_total
+    if ordinary < 0:
+        raise ValueError("world has fewer clusters than the SC3 reserved clusters")
+
+    context = _context(world)
+    allowed_decks = {
+        bracket: [
+            deck
+            for deck in world.deck_ids
+            if context.decks.by_id[deck].bracket == bracket and deck not in pinned_decks
+        ]
+        for bracket in range(world.brackets)
+    }
+
+    rows: list[dict[str, object]] = []
+    cluster_index = 0
+    for sparse_agent, count in sorted(sparse.items()):
+        for offset in range(count):
+            cluster_id = f"s{cluster_index:03d}"
+            rows.extend(
+                _sparse_cluster(
+                    context,
+                    cluster_index,
+                    cluster_id,
+                    sparse_agent,
+                    ordinary_agents,
+                    allowed_decks,
+                    include_anchor=offset == 0,
+                )
+            )
+            cluster_index += 1
+    for pinned_agent, pinned_deck in sorted(pinned.items()):
+        for offset in range(pinned_reserved):
+            cluster_id = f"s{cluster_index:03d}"
+            rows.extend(
+                _reserved_cluster(
+                    context,
+                    cluster_index,
+                    cluster_id,
+                    pinned_agent,
+                    pinned_deck,
+                    ordinary_agents,
+                    include_anchor=offset == 0,
+                )
+            )
+            cluster_index += 1
+    for _ in range(ordinary):
+        cluster_id = f"s{cluster_index:03d}"
+        rows.extend(
+            _ordinary_cluster(context, cluster_index, cluster_id, ordinary_agents, allowed_decks)
+        )
+        cluster_index += 1
     return rows
 
 

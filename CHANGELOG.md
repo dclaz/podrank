@@ -65,6 +65,10 @@ semantic versioning.
   pass and omits them from headline SDWP.
 - SC3b crossover augmentation: exactly two crossover clusters make the first
   pinned agent's anchor contrast pass D4 while the second stays aliased.
+- SC3 sparse-support generator: 3/6/12 reserved clusters for the three sparse
+  agents, an exclusive pinned deck, exact likelihood-bearing counts, pinned
+  aliasing and `insufficient_clusters` bootstrap suppression for the 3- and
+  6-cluster agents only.
 - `difference_gram()` exposes the D4 Gram used by the scenario generator
   assertions without materialising difference rows.
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.

@@ -26,10 +26,10 @@ The P3 cluster-bootstrap core (`podrank.uncertainty`), tuple-key diagnostics,
 serial/Linux `fork`/Linux `spawn` replicate execution, ordinary `doc_tiny`,
 the `doc_tiny_balanced` vertical slice and a Windows `spawn` parity CI step are
 available. `ci_smoke`, `standard` and `perf_large` world definitions plus
-deterministic SC5/SC6/SC7/SC8 checks and the SC3b crossover report check exist.
-Windows CI has not yet run green; SC1/SC2/SC3/SC4 statistical or report gates and
-the 16-core bootstrap benchmark remain pending. The comparison API is not
-implemented. Implementation phases follow
+deterministic SC3/SC5/SC6/SC7/SC8 checks and the SC3b crossover report check
+exist. Windows CI has not yet run green; the SC1/SC2 statistical studies, the
+SC4 report and the 16-core bootstrap benchmark remain pending. The comparison
+API is not implemented. Implementation phases follow
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) §15.
 
 ## Development
