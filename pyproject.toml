@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "podrank"
+dynamic = ["version"]
+description = "Rating fixed, versioned agents in four-player free-for-all games"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+]
+
+[project.optional-dependencies]
+io = ["pyarrow>=15"]
+polars = ["polars>=1.0"]
+plot = ["matplotlib>=3.8"]
+reference = ["numpyro>=0.15", "jax>=0.4"]
+speed = ["numba>=0.60"]
+cli = ["typer>=0.12", "rich>=13"]
+all = [
+    "pyarrow>=15",
+    "polars>=1.0",
+    "matplotlib>=3.8",
+    "numpyro>=0.15",
+    "jax>=0.4",
+    "numba>=0.60",
+    "typer>=0.12",
+    "rich>=13",
+]
+
+[dependency-groups]
+dev = [
+    "coverage[toml]>=7.6",
+    "hypothesis>=6.100",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.26",
+    "mypy>=1.11",
+    "pre-commit>=3.8",
+    "pytest>=8.3",
+    "pytest-benchmark>=4.0",
+    "pytest-xdist>=3.6",
+    "ruff>=0.7",
+]
+
+[tool.hatch.version]
+path = "podrank/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["podrank"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+# Ruff formats Python code fences inside Markdown. The plan and ADR text contain
+# intentionally aligned normative snippets, so only check real Python sources.
+extend-exclude = ["**/*.md", "site"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["podrank"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+files = ["podrank"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "stat: statistical tests; excluded from the fast selection",
+]
+
+[tool.coverage.run]
+source = ["podrank"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90

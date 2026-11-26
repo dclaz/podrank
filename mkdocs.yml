@@ -1,0 +1,17 @@
+site_name: podrank
+site_description: Rating fixed, versioned agents in four-player free-for-all games
+docs_dir: docs
+theme:
+  name: material
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+nav:
+  - Home: index.md
+  - Decisions:
+      - Overview: decisions/index.md
+      - ADR template: decisions/0000-template.md
+      - P1 data surfaces: decisions/0001-p1-data-surfaces.md
