@@ -22,6 +22,23 @@ def _explicit_sdwp(post: Posterior, field, agent_id: str) -> float:
     return total
 
 
+def test_doc_tiny_default_world_has_outcome_mixture() -> None:
+    world = sim.reference_world("doc_tiny")
+    rows = world.game_rows()
+    outcomes = {row["outcome"] for row in rows}
+    assert len(rows) == 240
+    assert len({row["cluster_id"] for row in rows}) == 60
+    assert "draw" in outcomes
+    assert "cap" in outcomes
+    assert "win" in outcomes
+
+    post = fit(GameTable.from_records(rows), world.agent_registry(), world.deck_registry())
+    assert post.counts().received == 240
+    assert post.counts().eligible == 240
+    assert post.counts().likelihood_used < 240
+    assert len(post.sdwp(world.field(24)).rows) == 6
+
+
 def test_doc_tiny_balanced_vertical_slice(tmp_path) -> None:
     world = sim.reference_world("doc_tiny_balanced")
     agents = world.agent_registry()

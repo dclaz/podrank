@@ -54,6 +54,9 @@ semantic versioning.
 - `podrank.sim.reference_world("doc_tiny_balanced")` with the frozen 60-cluster
   world, 24-context `sim_field`, and the end-to-end records → fit → eligibility
   → SDWP → 100-replicate bootstrap vertical slice.
+- Ordinary `doc_tiny` world with the standard composition stream, shared-luck
+  Gumbel noise, 5% draws and 1% caps.
+- Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.
 - Collision-safe tuple diagnostics keys for contrast, log-worth and

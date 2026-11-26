@@ -23,10 +23,11 @@ persistence. The §12 cold-fit and SDWP targets pass on the local synthetic
 end-to-end time is currently dominated by I0. See
 [`docs/decisions/0002-p2-performance-spike.md`](docs/decisions/0002-p2-performance-spike.md).
 The P3 cluster-bootstrap core (`podrank.uncertainty`), tuple-key diagnostics,
-serial/Linux `fork`/Linux `spawn` replicate execution and the
-`doc_tiny_balanced` vertical slice are available. Windows `spawn` parity,
-SC1–SC8 scenario gates and the 16-core bootstrap benchmark remain pending. The
-comparison API is not implemented. Implementation phases follow
+serial/Linux `fork`/Linux `spawn` replicate execution, ordinary `doc_tiny`,
+the `doc_tiny_balanced` vertical slice and a Windows `spawn` parity CI step are
+available. Windows CI has not yet run green, and SC1–SC8 scenario gates plus the
+16-core bootstrap benchmark remain pending. The comparison API is not
+implemented. Implementation phases follow
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) §15.
 
 ## Development

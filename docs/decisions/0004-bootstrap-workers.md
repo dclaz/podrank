@@ -35,8 +35,9 @@ effect.
 ## Consequences
 
 - The public worker option is pinned in Appendix C.1.
-- Linux `fork` and Linux `spawn` parity are tested; Windows `spawn` parity and
-  the 16-core 400-refit benchmark remain pending.
+- Linux `fork` and Linux `spawn` parity are tested; a Windows `spawn` parity
+  step is wired into CI, but a green Windows run and the 16-core 400-refit
+  benchmark remain pending.
 - No `threadpoolctl` runtime dependency is added to the NumPy/SciPy core.
 - Reference benchmark reports must state the process start method, verified
   worker BLAS limits, elapsed time and peak memory across parent and workers,

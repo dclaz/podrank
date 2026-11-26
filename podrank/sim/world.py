@@ -24,6 +24,10 @@ class SimWorld:
     decks_per_bracket: int
     clusters: int
     balanced: bool
+    draw_rate: float = 0.0
+    cap_rate: float = 0.0
+    failure_rate: float = 0.0
+    rho_div: float = 0.0
 
     @property
     def agent_ids(self) -> tuple[str, ...]:
@@ -102,15 +106,37 @@ class SimWorld:
         delta = self.deck_effects
         rows: list[dict[str, object]] = []
         for cluster in range(self.clusters):
-            bracket = cluster % self.brackets
-            bracket_decks = sorted(
-                deck for deck in self.deck_ids if decks.by_id[deck].bracket == bracket
-            )
-            shift = (cluster // self.brackets) % self.decks_per_bracket
-            ordered_decks = bracket_decks[shift:] + bracket_decks[:shift]
-            ordered_agents = [
-                self.agent_ids[(cluster + offset) % self.agents] for offset in range(4)
-            ]
+            if self.balanced:
+                bracket = cluster % self.brackets
+                bracket_decks = sorted(
+                    deck for deck in self.deck_ids if decks.by_id[deck].bracket == bracket
+                )
+                shift = (cluster // self.brackets) % self.decks_per_bracket
+                ordered_decks = bracket_decks[shift:] + bracket_decks[:shift]
+                ordered_agents = [
+                    self.agent_ids[(cluster + offset) % self.agents] for offset in range(4)
+                ]
+                gumbel_rng = np.random.Generator(
+                    np.random.PCG64(np.random.SeedSequence(self.seed, spawn_key=(1, cluster)))
+                )
+                base_gumbel = gumbel_rng.gumbel(size=4)
+            else:
+                composition = np.random.Generator(
+                    np.random.PCG64(np.random.SeedSequence(self.seed, spawn_key=(1, cluster)))
+                )
+                bracket = int(composition.integers(0, self.brackets))
+                bracket_decks = sorted(
+                    deck for deck in self.deck_ids if decks.by_id[deck].bracket == bracket
+                )
+                deck_indices = composition.choice(len(bracket_decks), size=4, replace=False)
+                ordered_decks = [bracket_decks[int(index)] for index in deck_indices]
+                agent_indices = composition.choice(self.agents, size=4, replace=False)
+                ordered_agents = [self.agent_ids[int(index)] for index in agent_indices]
+                gumbel_rng = np.random.Generator(
+                    np.random.PCG64(np.random.SeedSequence(self.seed, spawn_key=(2, cluster)))
+                )
+                base_gumbel = gumbel_rng.gumbel(size=4)
+
             for rotation in range(4):
                 seated_agents = [ordered_agents[(position + rotation) % 4] for position in range(4)]
                 utilities = np.array(
@@ -124,16 +150,47 @@ class SimWorld:
                     dtype=np.float64,
                 )
                 if self.balanced:
-                    rng = np.random.Generator(
-                        np.random.PCG64(
-                            np.random.SeedSequence(self.seed, spawn_key=(1, cluster, rotation))
-                        )
-                    )
-                    winner = int(np.argmax(utilities + rng.gumbel(size=4)))
+                    gumbel = base_gumbel
                     outcome = "win"
                 else:
-                    outcome = "win"
-                    winner = int(np.argmax(utilities))
+                    redraw = gumbel_rng.random(4) < self.rho_div
+                    gumbel = np.where(redraw, gumbel_rng.gumbel(size=4), base_gumbel)
+                    outcome_rng = np.random.Generator(
+                        np.random.PCG64(
+                            np.random.SeedSequence(self.seed, spawn_key=(3, cluster, rotation))
+                        )
+                    )
+                    draw = float(outcome_rng.random())
+                    if draw < self.draw_rate:
+                        outcome = "draw"
+                        winner = None
+                    elif draw < self.draw_rate + self.cap_rate:
+                        outcome = "cap"
+                        winner = None
+                    elif draw < self.draw_rate + self.cap_rate + self.failure_rate:
+                        outcome = "failed"
+                        winner = None
+                    else:
+                        outcome = "win"
+                        winner = int(np.argmax(utilities + gumbel))
+                    rows.append(
+                        {
+                            "game_id": f"b{cluster:03d}r{rotation}",
+                            "played_at": f"2026-01-01T00:00:{cluster % 60:02d}Z",
+                            "agents": seated_agents,
+                            "decks": ordered_decks,
+                            "policy_versions": [
+                                agents.by_id[agent].policy_version for agent in seated_agents
+                            ],
+                            "swap_counts": [0, 0, 0, 0],
+                            "outcome": outcome,
+                            "winner_seat": winner,
+                            "suite": "train",
+                            "cluster_id": f"b{cluster:03d}",
+                            "engine_version": "world",
+                        }
+                    )
+                    continue
                 rows.append(
                     {
                         "game_id": f"b{cluster:03d}r{rotation}",
@@ -145,7 +202,7 @@ class SimWorld:
                         ],
                         "swap_counts": [0, 0, 0, 0],
                         "outcome": outcome,
-                        "winner_seat": winner,
+                        "winner_seat": int(np.argmax(utilities + gumbel)),
                         "suite": "train",
                         "cluster_id": f"b{cluster:03d}",
                         "engine_version": "world",
@@ -192,6 +249,10 @@ def reference_world(name: str) -> SimWorld:
         decks_per_bracket=int(raw["decks_per_bracket"]),
         clusters=int(raw["clusters"]),
         balanced=bool(raw["balanced"]),
+        draw_rate=float(raw.get("draw_rate", 0.0)),
+        cap_rate=float(raw.get("cap_rate", 0.0)),
+        failure_rate=float(raw.get("failure_rate", 0.0)),
+        rho_div=float(raw.get("rho_div", 0.0)),
     )
 
 

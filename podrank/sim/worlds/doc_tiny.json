@@ -1,0 +1,13 @@
+{
+  "name": "doc_tiny",
+  "seed": 101,
+  "agents": 6,
+  "brackets": 3,
+  "decks_per_bracket": 4,
+  "clusters": 60,
+  "balanced": false,
+  "draw_rate": 0.05,
+  "cap_rate": 0.01,
+  "failure_rate": 0.0,
+  "rho_div": 0.3
+}

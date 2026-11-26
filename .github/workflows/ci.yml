@@ -57,3 +57,5 @@ jobs:
       - run: uv sync --locked --group dev --python 3.12
 
       - run: uv run --locked --python 3.12 pytest -q tests/test_smoke.py
+
+      - run: uv run --locked --python 3.12 pytest -q tests/test_bootstrap.py -k "spawn or serial_parallel"
