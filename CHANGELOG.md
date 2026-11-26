@@ -116,6 +116,11 @@ semantic versioning.
 - A NumPy `unique`/`bincount` entity-count implementation was tested and
   reverted (0.343 vs 0.203 s per 100k); the combined Python pass is faster at
   these entity counts.
+- Standard SC1 release-shape study passes: 1000/1000 replications, 41,000/41,000
+  intervals, emission 1.0, pooled coverage 0.9433658536585365, no target misses.
+  Standard SC2 was started locally and interrupted; it is scheduled on the main
+  computer, so the P3 statistical gate remains open until that result is
+  recorded (ADR 0006).
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

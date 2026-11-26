@@ -27,11 +27,12 @@ serial/Linux `fork`/Linux `spawn` replicate execution, ordinary `doc_tiny`,
 the `doc_tiny_balanced` vertical slice and a Windows `spawn` parity CI step are
 available. `ci_smoke`, `standard` and `perf_large` world definitions plus
 deterministic SC3/SC4/SC5/SC6/SC7/SC8 checks and the SC3b crossover report check
-exist. A 50-replication SC1/SC2 `ci_smoke` study runs in CI: SC1 passes pooled
-coverage, while SC2 currently misses it (ADR 0006). The full `standard`
-release runs, green Windows CI and the 16-core bootstrap benchmark remain
-pending. The comparison API is not implemented. Implementation phases follow
-[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) §15.
+exist. The 50-replication SC1/SC2 `ci_smoke` study runs in CI: SC1 passes
+pooled coverage, while SC2 misses it (ADR 0006). The full `standard` SC1 study
+also passes (1000 replications, pooled coverage 0.9434); the `standard` SC2
+run is scheduled on the main computer. Green Windows CI and the 16-core
+bootstrap benchmark remain pending. The comparison API is not implemented.
+Implementation phases follow [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) §15.
 
 ## Development
 

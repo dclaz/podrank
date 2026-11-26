@@ -1,6 +1,6 @@
-# 0006. SC1/SC2 ci_smoke study results and SC2 miss
+# 0006. SC1/SC2 statistical study results
 
-- **Status:** Accepted (release-review record; not an R1 release sign-off)
+- **Status:** Accepted (SC1 standard passed; SC2 standard pending)
 - **Date:** 2026-11-26
 - **Phase:** P3
 - **Contract/section:** §11.3, §14
@@ -33,6 +33,38 @@ Monte Carlo standard error for pooled coverage at 50 replications and
 `p ≈ 0.91` is about `sqrt(0.91·0.09/1050) ≈ 0.0088`, so SC2's pooled result is
 roughly 2.3 standard errors below the lower target.
 
+## Standard SC1 result (completed)
+
+The release-shape SC1 study was run locally on the 8-core dev machine:
+
+```text
+run_study("SC1", world_name="standard", replications=1000,
+          bootstrap_replicates=400, seed=303, workers=8)
+```
+
+with `OPENBLAS_NUM_THREADS=OMP_NUM_THREADS=MKL_NUM_THREADS=1` in the parent
+environment. It took 2,397 s.
+
+| Metric | Result |
+|---|---:|
+| Replications | 1000 / 1000 (0 failed) |
+| Quantities scored / emitted | 41,000 / 41,000 |
+| Emission rate | 1.0 |
+| Pooled coverage | **0.9433658536585365** |
+| Target misses | none |
+| Per-quantity coverage below 90% | none |
+
+`SC1` therefore meets the §11.3 statistical target on the release world. The
+local run is not the 16-core reference environment, but the study size and
+seed are the specified ones.
+
+## Standard SC2 status
+
+The local SC2 run was started and interrupted before completion. It produced
+no partial result (`run_study` returns only at completion). SC2 will be run on
+the main computer; until that result is recorded, the SC2 statistical gate
+remains open.
+
 ## Review
 
 This is a **statistical miss** under §11.3. It is not converted into a test
@@ -63,17 +95,18 @@ documented ones, and SC1's pooled coverage is inside the target range.
 - The CI `stat` job runs the 50-replication SC1/SC2 study. It blocks on
   structural failure (failed fits, no intervals, invalid coverage) but records
   coverage/bias misses as warnings, as §11.3 requires.
-- P3 is **not** claimed complete for the statistical gate. Before R1 release,
-  run both scenarios on `standard` with 1000 replications and update this ADR
-  with the result. A miss there requires the same review; it must not be fixed
-  by relaxing the model, priors or tolerances.
+- SC1 meets the statistical target on `standard` (1000 replications, bootstrap
+  400). SC2's `standard` run remains to be completed on the main computer.
+- P3 is **not** claimed complete for the statistical gate until SC2 `standard`
+  is recorded. A miss there requires the same review; it must not be fixed by
+  relaxing the model, priors or tolerances.
 - The `ci_smoke` result is an operating characteristic of the current
   implementation at small size, not a release sign-off.
 
 ## Follow-up
 
-- Run the `standard` 1000-replication SC1/SC2 study on the reference machine and
-  record the per-quantity coverage, emission and bias here.
+- Run the `standard` 1000-replication SC2 study on the main computer and record
+  the per-quantity coverage, emission and bias here.
 - If the standard run also misses, investigate whether the cluster bootstrap's
   independence assumption under strong shared deals needs a documented
   limitation or a revised uncertainty method; do not silently change the

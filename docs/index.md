@@ -13,9 +13,11 @@ tested. A Windows `spawn` parity step is wired into CI but has not yet run
 green. `ci_smoke`, `standard` and `perf_large` world definitions,
 deterministic SC3/SC4/SC5/SC6/SC7/SC8 checks and the SC3b crossover report check
 exist; a 50-replication SC1/SC2 `ci_smoke` study runs in CI. SC1 passes pooled
-coverage; SC2 currently misses it, recorded in ADR 0006. The full `standard`
-release runs, green Windows CI and the 16-core bootstrap benchmark remain
-pending. The comparison API is not exposed yet. Details are recorded in
+coverage; SC2 misses it at `ci_smoke` size, recorded in ADR 0006. The full
+`standard` SC1 study passes (1000 replications, pooled coverage 0.9434); the
+`standard` SC2 run is scheduled on the main computer. Green Windows CI and the
+16-core bootstrap benchmark remain pending. The comparison API is not exposed
+yet. Details are recorded in
 `docs/decisions/0002-p2-performance-spike.md`,
 `docs/decisions/0004-bootstrap-workers.md`,
 `docs/decisions/0005-sc4-generator.md` and
