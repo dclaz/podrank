@@ -113,6 +113,34 @@ def test_cluster_bootstrap_reports_and_diagnostics() -> None:
     assert all(item.n_converged == boot.n_converged for item in diagnostics.values())
 
 
+def test_batched_sdwp_matches_per_draw() -> None:
+    post = _posterior()
+    field = _field()
+    agents = [row.agent_id for row in post.sdwp(field).rows]
+    modes = np.vstack([post.mode, post.mode + 0.01 * np.arange(len(post.parameter_index))])
+    matrix = post._sdwp_matrix(field, agents, modes)
+    assert matrix.shape == (2, len(agents))
+    for row_index, mode in enumerate(modes):
+        for column, agent in enumerate(agents):
+            assert matrix[row_index, column] == pytest.approx(
+                post._sdwp_for_draw(field, agent, mode), rel=1e-12, abs=1e-12
+            )
+
+
+def test_bootstrap_sdwp_uses_batched_mode_values() -> None:
+    post = _posterior()
+    boot = uncertainty.cluster_bootstrap(post, n=4, seed=7, min_clusters=1, min_entity_clusters=1)
+    field = _field()
+    report = boot.sdwp(field)
+    for row in report.rows:
+        if row.interval is None:
+            continue
+        values = post._sdwp_matrix(field, [row.agent_id], boot.replicate_modes)[:, 0]
+        lo, hi = np.quantile(values, [0.025, 0.975], method="linear")
+        assert row.interval.lo == pytest.approx(float(lo))
+        assert row.interval.hi == pytest.approx(float(hi))
+
+
 def _assert_bootstrap_parity(first, second) -> None:
     assert second.failed_fraction == first.failed_fraction
     assert np.array_equal(second.replicate_weights, first.replicate_weights)

@@ -304,25 +304,22 @@ class BootstrapResult:
         original = self.posterior.sdwp(field)
         if isinstance(original, AnchorUnsupported):
             return original
+        common_agents: set[str] = set()
+        common_decks: set[str] = set()
+        for context in field.contexts:
+            common_agents.update(context.opponents)
+            common_decks.update(context.decks)
+        agent_order = [row.agent_id for row in original.rows]
+        values_matrix = self.posterior._sdwp_matrix(field, agent_order, self.replicate_modes)
         rows: list[SdwpRow] = []
-        for row in original.rows:
+        for index, row in enumerate(original.rows):
             key: DiagnosticKey = ("sdwp", original.field_hash, row.agent_id)
-            agent_ids = {row.agent_id}
-            deck_ids: set[str] = set()
-            for context in field.contexts:
-                agent_ids.update(context.opponents)
-                deck_ids.update(context.decks)
-            values = np.array(
-                [
-                    self.posterior._sdwp_for_draw(field, row.agent_id, mode)
-                    for mode in self.replicate_modes
-                ],
-                dtype=np.float64,
-            )
             interval, labels, _ = self._interval(
                 key,
-                values,
-                self._support_for_agents_and_decks(sorted(agent_ids), sorted(deck_ids)),
+                values_matrix[:, index],
+                self._support_for_agents_and_decks(
+                    sorted({row.agent_id} | common_agents), sorted(common_decks)
+                ),
                 row.labels,
             )
             rows.append(replace(row, interval=interval, labels=labels))

@@ -87,6 +87,10 @@ semantic versioning.
   0006. The 1,000-replication `standard` release run remains pending.
 - Field context/recipe validation tests cover the malformed-context and
   malformed-recipe branches.
+- Batched bootstrap SDWP: `Posterior._sdwp_matrix` evaluates all agents and
+  replicate modes together. On `standard`, 100-refit bootstrap SDWP drops from
+  9.22 s to 0.41 s per replication; the 10-replication SC1/SC2 smoke drops from
+  about 128 s to 33 s with identical coverage (ADR 0007).
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

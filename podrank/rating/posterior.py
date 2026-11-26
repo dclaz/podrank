@@ -616,6 +616,77 @@ class Posterior:
             total += context.weight * float(_probabilities(design @ psi)[context.focal_seat])
         return total
 
+    def _sdwp_matrix(self, field: Field, agent_ids: Sequence[str], modes: np.ndarray) -> np.ndarray:
+        """Return SDWP for every ``(mode, agent)`` pair on the compact path.
+
+        The result has shape ``(len(modes), len(agent_ids))``. It is the batched
+        equivalent of calling ``_sdwp_for_draw`` for each mode and agent.
+        """
+
+        compact = self.patterns.compact
+        if compact is None:
+            raise ValueError("compact SDWP requires a compact pattern table")
+        modes = np.asarray(modes, dtype=np.float64)
+        if modes.ndim != 2 or modes.shape[1] != len(self.parameter_index):
+            raise ValueError("modes have the wrong shape")
+        if not agent_ids:
+            return np.zeros((modes.shape[0], 0), dtype=np.float64)
+        deck_lookup = {
+            deck_id: position
+            for position, deck_id in enumerate(self.parameter_index.supported_decks)
+        }
+        agent_lookup = {
+            agent_id: position
+            for position, agent_id in enumerate(self.parameter_index.supported_agents)
+        }
+        context_count = len(field.contexts)
+        focal_seats = np.array([context.focal_seat for context in field.contexts], dtype=np.int64)
+        deck_indices = np.array(
+            [[deck_lookup[deck_id] for deck_id in context.decks] for context in field.contexts],
+            dtype=np.int64,
+        )
+        opponent_indices = np.array(
+            [
+                [agent_lookup[opponent] for opponent in context.opponents]
+                for context in field.contexts
+            ],
+            dtype=np.int64,
+        )
+        weights = np.array([context.weight for context in field.contexts], dtype=np.float64)
+        swaps = (
+            np.array([context.swap_counts for context in field.contexts], dtype=np.int64)
+            if self.spec.swap_effect
+            else None
+        )
+        all_seats = np.arange(4, dtype=np.int64)
+        non_focal_seats = np.empty((context_count, 3), dtype=np.int64)
+        for row in range(context_count):
+            non_focal_seats[row] = all_seats[all_seats != focal_seats[row]]
+        row_indices = np.arange(context_count, dtype=np.int64)
+        theta_start = self.parameter_index.block_slices["theta"][0]
+        eta_position = compact.eta_position
+        seat_effects = modes[:, compact.seat_positions]
+        mu = modes[:, compact.deck_mu_positions[deck_indices]]
+        delta = modes[:, compact.deck_delta_positions[deck_indices]]
+        output = np.empty((modes.shape[0], len(agent_ids)), dtype=np.float64)
+        for column, agent_id in enumerate(agent_ids):
+            try:
+                agent_index = agent_lookup[agent_id]
+            except KeyError as error:
+                raise UnknownEntityError(f"unknown agent {agent_id!r}") from error
+            agent_indices = np.empty((context_count, 4), dtype=np.int64)
+            agent_indices[row_indices, focal_seats] = agent_index
+            agent_indices[row_indices[:, None], non_focal_seats] = opponent_indices
+            theta = modes[:, theta_start + agent_indices]
+            utilities = theta + mu + delta + seat_effects[:, None, :]
+            if swaps is not None and eta_position is not None:
+                utilities = utilities + modes[:, eta_position][:, None, None] * swaps[None, :, :]
+            probabilities = _probabilities_rows(utilities.reshape(-1, 4)).reshape(
+                modes.shape[0], context_count, 4
+            )
+            output[:, column] = np.dot(probabilities[:, row_indices, focal_seats], weights)
+        return output
+
     def sdwp(
         self,
         field: Field,
