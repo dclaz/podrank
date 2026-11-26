@@ -316,23 +316,37 @@ def _outcome_rates(rows: Iterable[GameRow]) -> OutcomeRates:
     return OutcomeRates(counts=_outcome_counts(rows))
 
 
-def _entity_counts(
-    rows: Iterable[GameRow], entity_ids: Iterable[str], *, kind: Literal["agent", "deck"]
-) -> Mapping[str, EntityCounts]:
-    games = {entity_id: 0 for entity_id in entity_ids}
-    appearances = {entity_id: 0 for entity_id in entity_ids}
+def _entity_counts_pair(
+    rows: Iterable[GameRow],
+    agent_ids: Iterable[str],
+    deck_ids: Iterable[str],
+) -> tuple[Mapping[str, EntityCounts], Mapping[str, EntityCounts]]:
+    def counters(ids: Iterable[str]) -> tuple[dict[str, int], dict[str, int]]:
+        return {entity_id: 0 for entity_id in ids}, {entity_id: 0 for entity_id in ids}
+
+    agent_games, agent_appearances = counters(agent_ids)
+    deck_games, deck_appearances = counters(deck_ids)
     for row in rows:
-        values = row.agents if kind == "agent" else row.decks
-        for entity_id in set(values):
-            games[entity_id] += 1
-        for entity_id in values:
-            appearances[entity_id] += 1
-    return MappingProxyType(
-        {
-            entity_id: EntityCounts(games=games[entity_id], seat_appearances=appearances[entity_id])
-            for entity_id in sorted(games)
-        }
-    )
+        for entity_id in set(row.agents):
+            agent_games[entity_id] += 1
+        for entity_id in row.agents:
+            agent_appearances[entity_id] += 1
+        for entity_id in set(row.decks):
+            deck_games[entity_id] += 1
+        for entity_id in row.decks:
+            deck_appearances[entity_id] += 1
+
+    def result(games: dict[str, int], appearances: dict[str, int]) -> Mapping[str, EntityCounts]:
+        return MappingProxyType(
+            {
+                entity_id: EntityCounts(
+                    games=games[entity_id], seat_appearances=appearances[entity_id]
+                )
+                for entity_id in sorted(games)
+            }
+        )
+
+    return result(agent_games, agent_appearances), result(deck_games, deck_appearances)
 
 
 def _check_manifest_membership(rows: Iterable[GameRow], inclusion: Inclusion) -> None:
@@ -614,6 +628,7 @@ def run_pipeline(
         if outcomes and (all(outcomes) or not any(outcomes))
     )
 
+    agent_counts, deck_counts = _entity_counts_pair(eligible_rows, agents.by_id, decks.by_id)
     counts = CountsReport(
         received=received,
         exact_duplicates=exact_duplicates,
@@ -621,8 +636,8 @@ def run_pipeline(
         excluded=MappingProxyType({reason: excluded[reason] for reason in _EXCLUSION_REASONS}),
         likelihood_used=len(likelihood_rows),
         likelihood_bearing_clusters=len(likelihood_bearing),
-        agents=_entity_counts(eligible_rows, agents.by_id, kind="agent"),
-        decks=_entity_counts(eligible_rows, decks.by_id, kind="deck"),
+        agents=agent_counts,
+        decks=deck_counts,
     )
 
     return PipelineResult(

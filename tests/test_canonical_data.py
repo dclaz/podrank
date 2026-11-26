@@ -10,7 +10,9 @@ import pytest
 
 from podrank import GameTable, Inclusion
 from podrank.data import inclusion as inclusion_module
+from podrank.data._canonical import canonical_json
 from podrank.data.inclusion import run_pipeline
+from podrank.data.table import canonical_row_json, canonical_row_payload, normalize_game_row
 from podrank.errors import DuplicateRowWarning
 from tests._fixtures import f7_rows, make_game, registries
 
@@ -23,6 +25,29 @@ def run(rows, *, inclusion: Inclusion | None = None):
         decks,
         inclusion=inclusion if inclusion is not None else Inclusion(),
     )
+
+
+def test_fast_canonical_row_json_matches_generic_serializer() -> None:
+    record = make_game(
+        "g1",
+        agents=("É", 'a"b', "c\\d", "e\nf"),
+        decks=("d1", "d2", "d3", "d4"),
+        policy_versions=("p😀", "p2", "p3", "p4"),
+        deck_versions=("v1", None, "v3", None),
+        swap_counts=(0, 1, 2, 3),
+        outcome="draw",
+        winner_seat=None,
+        suite='suite,"x"',
+        cluster_id="c\n",
+        block_id="b",
+        rotation=-2,
+        role="a",
+        deal_id="d",
+        spec_hash="s",
+        audit={"z": "é", "a": [1, {"b": "😀"}]},
+    )
+    row = normalize_game_row(record)
+    assert canonical_row_json(row) == canonical_json(canonical_row_payload(row))
 
 
 def test_data_hash_matches_an_independent_canonical_json_oracle() -> None:

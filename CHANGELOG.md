@@ -107,6 +107,11 @@ semantic versioning.
   of recomputing it; cluster strata aggregate in one pass; the component
   union-find is array-indexed with identical persisted roots (0.735 → 0.478 s
   at 400k rows).
+- Canonical row serialization now uses the C ASCII string encoder and fixed key
+  order instead of `json.dumps(sort_keys=True)`, with byte-identical output;
+  row validation has exact-type fast paths and entity counts share one pass.
+  400k I0: 10.3 → 9.2 s. 1M cold fit: 9.87 s; full 1M fit including I0:
+  38.7–42.4 s; 1M SDWP 10k: 0.27–0.30 s.
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

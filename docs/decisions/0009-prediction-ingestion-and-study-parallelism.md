@@ -52,6 +52,34 @@ reference-run requirement configured before Python starts.
   agents. It preserves the exact persisted roots and takes 0.478 s at 400k rows
   versus 0.735 s before.
 
+### Final I0 pass and 1M validation
+
+- `canonical_row_json` now encodes the fixed canonical key order with the C
+  `encode_basestring_ascii` helper instead of `json.dumps(sort_keys=True)`.
+  Bytes match the generic serializer exactly; encoding is about 22% faster.
+- `_string`, `_sequence4` and `_integer` have exact-type fast paths, and agent
+  and deck entity counts share one pass over eligible rows.
+- I0 at 400k rows: 10.3 s → 9.2 s.
+
+On the full 1M-game `perf_large` shape (250k clusters, 50 agents, 140 decks,
+199 parameters):
+
+| Measurement | Result |
+|---|---:|
+| `GameTable.from_records` | 7.6–8.8 s |
+| I0 pipeline | 23.8–24.0 s |
+| Compression | 3.3 s |
+| Newton | 6.5–7.1 s |
+| Cold fit | **9.87 s** |
+| D4 row space | 0.50 s |
+| D2 likelihood Hessian | 1.1–1.3 s |
+| SDWP, 10k contexts | 0.27–0.30 s |
+| Full `fit` including I0 | 38.7–42.4 s |
+| Save / load | 0.34–0.62 s |
+| Bootstrap 100 refits, 4 workers | 329 s |
+| Bootstrap 10 refits, 4 workers | 40 s |
+| Peak RSS | 2.55 GiB |
+
 ### Measurements
 
 Local dev machine; 400k-row synthetic `perf_large` shape unless stated.

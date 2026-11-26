@@ -14,6 +14,7 @@ from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
+from json.encoder import encode_basestring_ascii
 from types import MappingProxyType
 from typing import cast
 
@@ -57,6 +58,10 @@ _RFC3339 = re.compile(
 
 
 def _string(value: object, field_name: str, *, allow_empty: bool = False) -> str:
+    if type(value) is str:
+        if value or allow_empty:
+            return value
+        raise ValidationError(f"{field_name} must not be empty")
     if not isinstance(value, str):
         raise ValidationError(f"{field_name} must be a string")
     if not allow_empty and not value:
@@ -71,6 +76,10 @@ def _optional_string(value: object, field_name: str) -> str | None:
 
 
 def _sequence4(value: object, field_name: str) -> Sequence[object]:
+    if type(value) is list or type(value) is tuple:
+        if len(value) != 4:
+            raise ValidationError(f"{field_name} must have length 4, got {len(value)}")
+        return value
     if isinstance(value, (str, bytes, bytearray)) or not isinstance(value, Sequence):
         raise ValidationError(f"{field_name} must be a sequence of length 4")
     if len(value) != 4:
@@ -79,6 +88,10 @@ def _sequence4(value: object, field_name: str) -> Sequence[object]:
 
 
 def _integer(value: object, field_name: str, *, minimum: int | None = None) -> int:
+    if type(value) is int:
+        if minimum is None or value >= minimum:
+            return value
+        raise ValidationError(f"{field_name} must be >= {minimum}")
     if isinstance(value, bool) or not isinstance(value, int):
         raise ValidationError(f"{field_name} must be an integer")
     if minimum is not None and value < minimum:
@@ -331,9 +344,65 @@ def canonical_row_payload(row: GameRow) -> dict[str, object]:
 
 
 def canonical_row_json(row: GameRow) -> str:
-    """Canonical JSON for one row, used for exact-duplicate equality."""
+    """Canonical JSON for one row, used for exact-duplicate equality and hashing."""
 
-    return canonical_json(canonical_row_payload(row))
+    audit = "null" if row.audit is None else canonical_json(dict(row.audit))
+    agents = ",".join(encode_basestring_ascii(agent) for agent in row.agents)
+    decks = ",".join(encode_basestring_ascii(deck) for deck in row.decks)
+    policies = ",".join(encode_basestring_ascii(version) for version in row.policy_versions)
+    deck_versions = ",".join(
+        "null" if version is None else encode_basestring_ascii(version)
+        for version in row.deck_versions
+    )
+    swaps = ",".join(str(count) for count in row.swap_counts)
+
+    def optional(value: str | None) -> str:
+        return "null" if value is None else encode_basestring_ascii(value)
+
+    def optional_int(value: int | None) -> str:
+        return "null" if value is None else str(value)
+
+    return "".join(
+        [
+            '{"agents":[',
+            agents,
+            '],"audit":',
+            audit,
+            ',"block_id":',
+            optional(row.block_id),
+            ',"cluster_id":',
+            optional(row.cluster_id),
+            ',"deal_id":',
+            optional(row.deal_id),
+            ',"deck_versions":[',
+            deck_versions,
+            '],"decks":[',
+            decks,
+            '],"engine_version":',
+            encode_basestring_ascii(row.engine_version),
+            ',"game_id":',
+            encode_basestring_ascii(row.game_id),
+            ',"outcome":',
+            encode_basestring_ascii(row.outcome),
+            ',"played_at":',
+            encode_basestring_ascii(format_timestamp(row.played_at)),
+            ',"policy_versions":[',
+            policies,
+            '],"role":',
+            optional(row.role),
+            ',"rotation":',
+            optional_int(row.rotation),
+            ',"spec_hash":',
+            optional(row.spec_hash),
+            ',"suite":',
+            encode_basestring_ascii(row.suite),
+            ',"swap_counts":[',
+            swaps,
+            '],"winner_seat":',
+            optional_int(row.winner_seat),
+            "}",
+        ]
+    )
 
 
 def compute_data_hash(rows: Sequence[GameRow]) -> str:
@@ -346,7 +415,7 @@ def compute_data_hash(rows: Sequence[GameRow]) -> str:
         if not first:
             digest.update(b",")
         first = False
-        digest.update(canonical_json(canonical_row_payload(row)).encode("utf-8"))
+        digest.update(canonical_row_json(row).encode("utf-8"))
     digest.update(b"]")
     return digest.hexdigest()
 
