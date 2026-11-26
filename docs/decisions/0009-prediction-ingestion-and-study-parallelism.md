@@ -55,30 +55,41 @@ reference-run requirement configured before Python starts.
 ### Final I0 pass and 1M validation
 
 - `canonical_row_json` now encodes the fixed canonical key order with the C
-  `encode_basestring_ascii` helper instead of `json.dumps(sort_keys=True)`.
-  Bytes match the generic serializer exactly; encoding is about 22% faster.
-- `_string`, `_sequence4` and `_integer` have exact-type fast paths, and agent
-  and deck entity counts share one pass over eligible rows.
-- I0 at 400k rows: 10.3 s → 9.2 s.
+  `encode_basestring_ascii` helper instead of `json.dumps(sort_keys=True)`,
+  with cached quoting for the repeated agent/deck/policy strings. Bytes match
+  the generic serializer exactly.
+- `normalize_game_row` uses four-item fast validators, exact-type scalar paths
+  and positional `GameRow` construction.
+- Row normalisation: 1.21 s → 0.91 s per 100k rows.
+- Canonical row encoding: 0.78 s → 0.55 s per 100k rows.
+- I0 at 400k rows: 10.3 s → 8.55 s.
+
+A NumPy `unique`/`bincount` entity-count path was also tested and **reverted**:
+it took 0.343 s versus 0.203 s for the combined Python pass at 100k rows,
+because the pair array and `np.unique` allocations dominate at these entity
+counts.
 
 On the full 1M-game `perf_large` shape (250k clusters, 50 agents, 140 decks,
 199 parameters):
 
 | Measurement | Result |
 |---|---:|
-| `GameTable.from_records` | 7.6–8.8 s |
-| I0 pipeline | 23.8–24.0 s |
-| Compression | 3.3 s |
-| Newton | 6.5–7.1 s |
+| `GameTable.from_records` | 7.5–9.8 s |
+| I0 pipeline | 23.4–25.8 s |
+| Compression | 3.3–3.9 s |
+| Newton | 6.5–7.6 s |
 | Cold fit | **9.87 s** |
-| D4 row space | 0.50 s |
-| D2 likelihood Hessian | 1.1–1.3 s |
-| SDWP, 10k contexts | 0.27–0.30 s |
+| D4 row space | 0.50–0.57 s |
+| D2 likelihood Hessian | 1.1–1.4 s |
+| SDWP, 10k contexts | 0.27–0.33 s |
 | Full `fit` including I0 | 38.7–42.4 s |
 | Save / load | 0.34–0.62 s |
 | Bootstrap 100 refits, 4 workers | 329 s |
 | Bootstrap 10 refits, 4 workers | 40 s |
 | Peak RSS | 2.55 GiB |
+
+The run-to-run variance comes from the shared WSL2 host; the 400k I0 result is
+the cleaner measurement of the serializer/validation change.
 
 ### Measurements
 

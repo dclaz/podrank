@@ -108,10 +108,14 @@ semantic versioning.
   union-find is array-indexed with identical persisted roots (0.735 → 0.478 s
   at 400k rows).
 - Canonical row serialization now uses the C ASCII string encoder and fixed key
-  order instead of `json.dumps(sort_keys=True)`, with byte-identical output;
-  row validation has exact-type fast paths and entity counts share one pass.
-  400k I0: 10.3 → 9.2 s. 1M cold fit: 9.87 s; full 1M fit including I0:
-  38.7–42.4 s; 1M SDWP 10k: 0.27–0.30 s.
+  order instead of `json.dumps(sort_keys=True)`, with cached quoting for
+  repeated strings; row validation has exact-type fast paths. Row
+  normalisation 1.21 → 0.91 s and canonical encoding 0.78 → 0.55 s per 100k;
+  400k I0 10.3 → 8.55 s. 1M cold fit 9.87 s; full 1M fit including I0
+  38.7–42.4 s; 1M SDWP 10k 0.27–0.33 s.
+- A NumPy `unique`/`bincount` entity-count implementation was tested and
+  reverted (0.343 vs 0.203 s per 100k); the combined Python pass is faster at
+  these entity counts.
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

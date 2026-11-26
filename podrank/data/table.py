@@ -233,6 +233,62 @@ def format_timestamp(value: datetime) -> str:
     return _format_timestamp_cached(value)
 
 
+def _validated_items4(value: object, field_name: str) -> Sequence[object]:
+    if type(value) is list or type(value) is tuple:
+        if len(value) != 4:
+            raise ValidationError(f"{field_name} must have length 4, got {len(value)}")
+        return value
+    return _sequence4(value, field_name)
+
+
+def _strings4(value: object, field_name: str) -> tuple[str, str, str, str]:
+    result: list[str] = []
+    for item in _validated_items4(value, field_name):
+        if type(item) is str:
+            if not item:
+                raise ValidationError(f"{field_name} must not be empty")
+        elif not isinstance(item, str):
+            raise ValidationError(f"{field_name} must be a string")
+        elif not item:
+            raise ValidationError(f"{field_name} must not be empty")
+        result.append(item)
+    return cast(tuple[str, str, str, str], tuple(result))
+
+
+def _optional_strings4(
+    value: object, field_name: str
+) -> tuple[str | None, str | None, str | None, str | None]:
+    result: list[str | None] = []
+    for item in _validated_items4(value, field_name):
+        if item is None:
+            result.append(None)
+        elif type(item) is str:
+            if not item:
+                raise ValidationError(f"{field_name} must not be empty")
+            result.append(item)
+        elif not isinstance(item, str):
+            raise ValidationError(f"{field_name} must be a string")
+        elif not item:
+            raise ValidationError(f"{field_name} must not be empty")
+        else:
+            result.append(item)
+    return cast(tuple[str | None, str | None, str | None, str | None], tuple(result))
+
+
+def _swaps4(value: object) -> tuple[int, int, int, int]:
+    result: list[int] = []
+    for item in _validated_items4(value, "swap_counts"):
+        if type(item) is int:
+            if item < 0:
+                raise ValidationError("swap_counts must be >= 0")
+        elif isinstance(item, bool) or not isinstance(item, int):
+            raise ValidationError("swap_counts must be an integer")
+        elif item < 0:
+            raise ValidationError("swap_counts must be >= 0")
+        result.append(item)
+    return cast(tuple[int, int, int, int], tuple(result))
+
+
 def normalize_game_row(record: Mapping[str, object]) -> GameRow:
     """Apply I0 step 1 to one raw record."""
 
@@ -246,25 +302,17 @@ def normalize_game_row(record: Mapping[str, object]) -> GameRow:
 
     game_id = _string(record["game_id"], "game_id")
     played_at = normalize_timestamp(record["played_at"])
-
-    agent_items = _sequence4(record["agents"], "agents")
-    deck_items = _sequence4(record["decks"], "decks")
-    policy_items = _sequence4(record["policy_versions"], "policy_versions")
-    agents = tuple(_string(item, "agents") for item in agent_items)
-    decks = tuple(_string(item, "decks") for item in deck_items)
-    policy_versions = tuple(_string(item, "policy_versions") for item in policy_items)
+    agents = _strings4(record["agents"], "agents")
+    decks = _strings4(record["decks"], "decks")
+    policy_versions = _strings4(record["policy_versions"], "policy_versions")
 
     if "deck_versions" in record and record["deck_versions"] is not None:
-        deck_version_items = _sequence4(record["deck_versions"], "deck_versions")
-        deck_versions = tuple(
-            None if item is None else _string(item, "deck_versions") for item in deck_version_items
-        )
+        deck_versions = _optional_strings4(record["deck_versions"], "deck_versions")
     else:
         deck_versions = (None, None, None, None)
 
     if "swap_counts" in record:
-        swap_items = _sequence4(record["swap_counts"], "swap_counts")
-        swap_counts = tuple(_integer(item, "swap_counts", minimum=0) for item in swap_items)
+        swap_counts = _swaps4(record["swap_counts"])
     else:
         swap_counts = (0, 0, 0, 0)
 
@@ -297,24 +345,24 @@ def normalize_game_row(record: Mapping[str, object]) -> GameRow:
     engine_version = _string(record.get("engine_version", ""), "engine_version", allow_empty=True)
 
     return GameRow(
-        game_id=game_id,
-        played_at=played_at,
-        agents=cast(tuple[str, str, str, str], agents),
-        decks=cast(tuple[str, str, str, str], decks),
-        policy_versions=cast(tuple[str, str, str, str], policy_versions),
-        deck_versions=cast(tuple[str | None, str | None, str | None, str | None], deck_versions),
-        swap_counts=cast(tuple[int, int, int, int], swap_counts),
-        outcome=outcome,
-        winner_seat=winner_seat,
-        suite=suite,
-        cluster_id=cluster_id,
-        block_id=block_id,
-        rotation=rotation,
-        role=role,
-        deal_id=deal_id,
-        spec_hash=spec_hash,
-        engine_version=engine_version,
-        audit=_audit(record.get("audit")),
+        game_id,
+        played_at,
+        agents,
+        decks,
+        policy_versions,
+        deck_versions,
+        swap_counts,
+        outcome,
+        winner_seat,
+        suite,
+        cluster_id,
+        block_id,
+        rotation,
+        role,
+        deal_id,
+        spec_hash,
+        engine_version,
+        _audit(record.get("audit")),
     )
 
 
@@ -343,21 +391,25 @@ def canonical_row_payload(row: GameRow) -> dict[str, object]:
     }
 
 
+@lru_cache(maxsize=8192)
+def _quote(value: str) -> str:
+    return encode_basestring_ascii(value)
+
+
 def canonical_row_json(row: GameRow) -> str:
     """Canonical JSON for one row, used for exact-duplicate equality and hashing."""
 
     audit = "null" if row.audit is None else canonical_json(dict(row.audit))
-    agents = ",".join(encode_basestring_ascii(agent) for agent in row.agents)
-    decks = ",".join(encode_basestring_ascii(deck) for deck in row.decks)
-    policies = ",".join(encode_basestring_ascii(version) for version in row.policy_versions)
+    agents = ",".join(_quote(agent) for agent in row.agents)
+    decks = ",".join(_quote(deck) for deck in row.decks)
+    policies = ",".join(_quote(version) for version in row.policy_versions)
     deck_versions = ",".join(
-        "null" if version is None else encode_basestring_ascii(version)
-        for version in row.deck_versions
+        "null" if version is None else _quote(version) for version in row.deck_versions
     )
     swaps = ",".join(str(count) for count in row.swap_counts)
 
     def optional(value: str | None) -> str:
-        return "null" if value is None else encode_basestring_ascii(value)
+        return "null" if value is None else _quote(value)
 
     def optional_int(value: int | None) -> str:
         return "null" if value is None else str(value)
@@ -379,11 +431,11 @@ def canonical_row_json(row: GameRow) -> str:
             '],"decks":[',
             decks,
             '],"engine_version":',
-            encode_basestring_ascii(row.engine_version),
+            _quote(row.engine_version),
             ',"game_id":',
             encode_basestring_ascii(row.game_id),
             ',"outcome":',
-            encode_basestring_ascii(row.outcome),
+            _quote(row.outcome),
             ',"played_at":',
             encode_basestring_ascii(format_timestamp(row.played_at)),
             ',"policy_versions":[',
@@ -395,7 +447,7 @@ def canonical_row_json(row: GameRow) -> str:
             ',"spec_hash":',
             optional(row.spec_hash),
             ',"suite":',
-            encode_basestring_ascii(row.suite),
+            _quote(row.suite),
             ',"swap_counts":[',
             swaps,
             '],"winner_seat":',
