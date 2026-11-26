@@ -1,0 +1,13 @@
+{
+  "name": "ci_smoke",
+  "seed": 202,
+  "agents": 10,
+  "brackets": 3,
+  "decks_per_bracket": 8,
+  "clusters": 200,
+  "balanced": false,
+  "draw_rate": 0.05,
+  "cap_rate": 0.01,
+  "failure_rate": 0.0,
+  "rho_div": 0.3
+}

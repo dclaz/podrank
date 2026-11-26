@@ -1,0 +1,13 @@
+{
+  "name": "standard",
+  "seed": 303,
+  "agents": 20,
+  "brackets": 4,
+  "decks_per_bracket": 12,
+  "clusters": 600,
+  "balanced": false,
+  "draw_rate": 0.05,
+  "cap_rate": 0.01,
+  "failure_rate": 0.0,
+  "rho_div": 0.3
+}

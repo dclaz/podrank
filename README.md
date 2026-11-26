@@ -25,9 +25,10 @@ end-to-end time is currently dominated by I0. See
 The P3 cluster-bootstrap core (`podrank.uncertainty`), tuple-key diagnostics,
 serial/Linux `fork`/Linux `spawn` replicate execution, ordinary `doc_tiny`,
 the `doc_tiny_balanced` vertical slice and a Windows `spawn` parity CI step are
-available. Windows CI has not yet run green, and SC1–SC8 scenario gates plus the
-16-core bootstrap benchmark remain pending. The comparison API is not
-implemented. Implementation phases follow
+available. `ci_smoke`, `standard` and `perf_large` world definitions plus
+deterministic SC5/SC6/SC8 smoke checks exist. Windows CI has not yet run green;
+SC1/SC2/SC3/SC3b/SC4/SC7 full gates and the 16-core bootstrap benchmark remain
+pending. The comparison API is not implemented. Implementation phases follow
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) §15.
 
 ## Development
