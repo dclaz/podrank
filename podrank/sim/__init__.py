@@ -11,6 +11,7 @@ from podrank.sim.scenarios import (
     sc3_roles,
     sc3_rows,
     sc7_rows,
+    standard_rows,
 )
 from podrank.sim.world import SimWorld, reference_world
 
@@ -27,4 +28,5 @@ __all__ = [
     "sc3_roles",
     "sc3_rows",
     "sc7_rows",
+    "standard_rows",
 ]

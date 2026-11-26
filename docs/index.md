@@ -12,9 +12,10 @@ vertical slice pass, and serial/Linux `fork`/Linux `spawn` bootstrap parity is
 tested. A Windows `spawn` parity step is wired into CI but has not yet run
 green. `ci_smoke`, `standard` and `perf_large` world definitions,
 deterministic SC3/SC5/SC6/SC7/SC8 checks and the SC3b crossover report check
-exist; the SC1/SC2 statistical studies, the SC4 report and the 16-core bootstrap
-benchmark remain pending. The comparison API is not exposed yet. Details are
-recorded in `docs/decisions/0002-p2-performance-spike.md` and
+exist; the full SC1/SC2 statistical release runs, the SC4 report and the
+16-core bootstrap benchmark remain pending. The SC1/SC2 harness is available in
+`podrank.sim.studies` for those runs. The comparison API is not exposed yet.
+Details are recorded in `docs/decisions/0002-p2-performance-spike.md` and
 `docs/decisions/0004-bootstrap-workers.md`.
 
 ## Where the specification lives

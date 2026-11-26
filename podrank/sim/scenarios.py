@@ -48,17 +48,27 @@ class _Context:
     mu: Mapping[int, float]
     delta: Mapping[str, float]
     seats: tuple[float, ...]
+    run_seed: int
+    rho_div: float
 
 
-def _context(world: SimWorld) -> _Context:
+def _context(
+    world: SimWorld,
+    *,
+    run_seed: int | None = None,
+    deck_effects: Mapping[str, float] | None = None,
+    rho_div: float | None = None,
+) -> _Context:
     return _Context(
         world=world,
         agents=world.agent_registry(),
         decks=world.deck_registry(),
         theta=world.theta,
         mu=world.bracket_effects,
-        delta=world.deck_effects,
+        delta=world.deck_effects if deck_effects is None else dict(deck_effects),
         seats=world.seats,
+        run_seed=world.seed if run_seed is None else run_seed,
+        rho_div=world.rho_div if rho_div is None else rho_div,
     )
 
 
@@ -139,11 +149,13 @@ def _sampled_outcome(
     if force_decisive:
         return "win", int(np.argmax(utilities + base_gumbel))
     gumbel = base_gumbel
-    if world.rho_div > 0:
-        redraw = gumbel_rng.random(4) < world.rho_div
+    if context.rho_div > 0:
+        redraw = gumbel_rng.random(4) < context.rho_div
         gumbel = np.where(redraw, gumbel_rng.gumbel(size=4), base_gumbel)
     outcome_rng = np.random.Generator(
-        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(3, cluster_index, rotation)))
+        np.random.PCG64(
+            np.random.SeedSequence(context.run_seed, spawn_key=(3, cluster_index, rotation))
+        )
     )
     draw = float(outcome_rng.random())
     if draw < world.draw_rate:
@@ -176,7 +188,7 @@ def _reserved_cluster(
         raise ValueError("pinned deck bracket has fewer than four usable decks")
 
     composition = np.random.Generator(
-        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(1, cluster_index)))
+        np.random.PCG64(np.random.SeedSequence(context.run_seed, spawn_key=(1, cluster_index)))
     )
     if include_anchor and "agent_00" in free_agents:
         first = "agent_00"
@@ -202,7 +214,7 @@ def _reserved_cluster(
         ordered_decks[seat] = other_decks[position]
 
     gumbel_rng = np.random.Generator(
-        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(2, cluster_index)))
+        np.random.PCG64(np.random.SeedSequence(context.run_seed, spawn_key=(2, cluster_index)))
     )
     base_gumbel = gumbel_rng.gumbel(size=4)
 
@@ -246,7 +258,7 @@ def _ordinary_cluster(
 ) -> list[dict[str, object]]:
     world = context.world
     composition = np.random.Generator(
-        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(1, cluster_index)))
+        np.random.PCG64(np.random.SeedSequence(context.run_seed, spawn_key=(1, cluster_index)))
     )
     bracket = int(composition.integers(0, world.brackets))
     bracket_decks = list(allowed_decks[bracket])
@@ -262,7 +274,7 @@ def _ordinary_cluster(
     ]
 
     gumbel_rng = np.random.Generator(
-        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(2, cluster_index)))
+        np.random.PCG64(np.random.SeedSequence(context.run_seed, spawn_key=(2, cluster_index)))
     )
     base_gumbel = gumbel_rng.gumbel(size=4)
 
@@ -306,7 +318,7 @@ def _sparse_cluster(
 ) -> list[dict[str, object]]:
     world = context.world
     composition = np.random.Generator(
-        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(1, cluster_index)))
+        np.random.PCG64(np.random.SeedSequence(context.run_seed, spawn_key=(1, cluster_index)))
     )
     bracket = int(composition.integers(0, world.brackets))
     deck_pool = list(allowed_decks[bracket])
@@ -330,7 +342,7 @@ def _sparse_cluster(
     ordered_agents = [sparse_agent, *others]
 
     gumbel_rng = np.random.Generator(
-        np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(2, cluster_index)))
+        np.random.PCG64(np.random.SeedSequence(context.run_seed, spawn_key=(2, cluster_index)))
     )
     base_gumbel = gumbel_rng.gumbel(size=4)
 
@@ -449,6 +461,40 @@ def sc3_rows(
             _ordinary_cluster(context, cluster_index, cluster_id, ordinary_agents, allowed_decks)
         )
         cluster_index += 1
+    return rows
+
+
+def standard_rows(
+    world: SimWorld,
+    *,
+    run_seed: int | None = None,
+    deck_effects: Mapping[str, float] | None = None,
+    rho_div: float | None = None,
+) -> list[dict[str, object]]:
+    """Generate one ordinary ``standard``-style replication.
+
+    The composition and outcome streams are keyed by ``run_seed`` so a study can
+    use an independent replication seed. ``deck_effects`` overrides the world's
+    δ (SC1/SC2 redraw it from the prior) and ``rho_div`` overrides the shared-luck
+    probability (SC2 uses zero).
+    """
+
+    context = _context(world, run_seed=run_seed, deck_effects=deck_effects, rho_div=rho_div)
+    allowed_decks = {
+        bracket: [deck for deck in world.deck_ids if context.decks.by_id[deck].bracket == bracket]
+        for bracket in range(world.brackets)
+    }
+    rows: list[dict[str, object]] = []
+    for cluster_index in range(world.clusters):
+        rows.extend(
+            _ordinary_cluster(
+                context,
+                cluster_index,
+                f"b{cluster_index:03d}",
+                world.agent_ids,
+                allowed_decks,
+            )
+        )
     return rows
 
 
@@ -577,7 +623,7 @@ def append_crossover_clusters(
         existing.add(cluster_id)
 
         composition = np.random.Generator(
-            np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(1, cluster_index)))
+            np.random.PCG64(np.random.SeedSequence(context.run_seed, spawn_key=(1, cluster_index)))
         )
         others = [
             "agent_00",
@@ -587,7 +633,7 @@ def append_crossover_clusters(
         ordered_agents = [first_agent, *others]
 
         gumbel_rng = np.random.Generator(
-            np.random.PCG64(np.random.SeedSequence(world.seed, spawn_key=(2, cluster_index)))
+            np.random.PCG64(np.random.SeedSequence(context.run_seed, spawn_key=(2, cluster_index)))
         )
         base_gumbel = gumbel_rng.gumbel(size=4)
         for rotation in range(4):

@@ -24,6 +24,28 @@ def test_reference_world_sizes() -> None:
         assert world.agent_registry().anchors[0].agent_id == "agent_00"
 
 
+def test_standard_rows_matches_world_generator_and_run_seed() -> None:
+    for name in ("doc_tiny", "ci_smoke"):
+        world = sim.reference_world(name)
+        assert sim.standard_rows(world) == world.game_rows()
+
+    world = sim.reference_world("ci_smoke")
+    first = sim.standard_rows(world, run_seed=1234)
+    assert first == sim.standard_rows(world, run_seed=1234)
+    assert first != sim.standard_rows(world, run_seed=5678)
+
+    zero_delta = {deck: 0.0 for deck in world.deck_ids}
+    overridden = sim.standard_rows(world, run_seed=1234, deck_effects=zero_delta, rho_div=0.0)
+    assert [row["agents"] for row in overridden] == [row["agents"] for row in first]
+    assert [row["decks"] for row in overridden] == [row["decks"] for row in first]
+    # Outcome categories use their own stream; δ and shared luck change winners.
+    assert [row["outcome"] for row in overridden] == [row["outcome"] for row in first]
+    assert [row["winner_seat"] for row in overridden] != [row["winner_seat"] for row in first]
+    assert overridden == sim.standard_rows(
+        world, run_seed=1234, deck_effects=zero_delta, rho_div=0.0
+    )
+
+
 def test_ci_smoke_world_generates_fixed_size() -> None:
     world = sim.reference_world("ci_smoke")
     rows = world.game_rows()

@@ -71,6 +71,13 @@ semantic versioning.
   6-cluster agents only.
 - `difference_gram()` exposes the D4 Gram used by the scenario generator
   assertions without materialising difference rows.
+- `podrank.sim.studies` SC1/SC2 harness: per-replication seeds, δ redrawn from
+  N(0, 0.5²), `ρ_div` override, the deduplicated §11.3 scoring list, an
+  independent SDWP truth calculation, and coverage/emission/bias reporting with
+  explicit target-miss diagnostics. The full 50/1,000-replication release runs
+  remain pending.
+- `sim.standard_rows` exposes the ordinary world generator with run-seed and δ
+  overrides and stays byte-identical to `world.game_rows()` at default settings.
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.
