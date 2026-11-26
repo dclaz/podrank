@@ -143,27 +143,27 @@ class ContrastContext:
 def _component_map(
     supported_agents: Sequence[str], likelihood_rows: Sequence[GameRow]
 ) -> dict[str, str]:
-    parent = {agent: agent for agent in supported_agents}
+    supported = tuple(sorted(set(supported_agents)))
+    position = {agent: index for index, agent in enumerate(supported)}
+    parent = list(range(len(supported)))
 
-    def find(agent: str) -> str:
-        while parent[agent] != agent:
-            parent[agent] = parent[parent[agent]]
-            agent = parent[agent]
-        return agent
-
-    def union(left: str, right: str) -> None:
-        left_root = find(left)
-        right_root = find(right)
-        if left_root != right_root:
-            parent[right_root] = left_root
+    def find(index: int) -> int:
+        while parent[index] != index:
+            parent[index] = parent[parent[index]]
+            index = parent[index]
+        return index
 
     for row in likelihood_rows:
         distinct = sorted(set(row.agents))
-        if len(distinct) > 1:
-            first = distinct[0]
-            for other in distinct[1:]:
-                union(first, other)
-    return {agent: find(agent) for agent in supported_agents}
+        if len(distinct) < 2:
+            continue
+        first = position[distinct[0]]
+        first_root = find(first)
+        for other in distinct[1:]:
+            other_root = find(position[other])
+            if other_root != first_root:
+                parent[other_root] = first_root
+    return {agent: supported[find(position[agent])] for agent in supported}
 
 
 def build_components(

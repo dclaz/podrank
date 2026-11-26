@@ -22,6 +22,7 @@ from podrank import (
 from podrank.errors import SwapsNotModelledError
 from podrank.rating.design import design_row
 from podrank.rating.identification import AnchorUnsupported, agent_vector, aliasing_residual
+from podrank.rating.likelihood import likelihood_hess
 from tests._fixtures import make_game, registries
 
 
@@ -248,6 +249,19 @@ def test_f17_output_statuses() -> None:
     assert not isinstance(report, AnchorUnsupported)
     assert [row.agent_id for row in report.rows] == ["H"]
     assert report.rows[0].sdwp > 0
+
+
+def test_fit_reuses_solver_likelihood_hessian() -> None:
+    agents, decks = registries()
+    rows = [
+        make_game("g1", agents=("H", "A", "B", "C"), winner_seat=0),
+        make_game("g2", agents=("A", "B", "C", "H"), winner_seat=1),
+        make_game("g3", agents=("B", "C", "H", "A"), winner_seat=2),
+        make_game("g4", agents=("C", "H", "A", "B"), winner_seat=3),
+    ]
+    post = fit(GameTable.from_records(rows), agents, decks)
+    expected = likelihood_hess(post.mode, post.patterns)
+    assert np.allclose(post.data_hessian, expected, rtol=1e-10, atol=1e-12)
 
 
 def test_compact_predict_proba_matches_manual_designs() -> None:

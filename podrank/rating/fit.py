@@ -120,9 +120,13 @@ def solve_patterns(
         "utilities": None,
         "probabilities": None,
     }
+    prior_diagonal = np.diag(precision)
+    last_data_hessian: np.ndarray | None = None
 
     def evaluate(psi: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
+        nonlocal last_data_hessian
         evaluation = compact_evaluate(psi, patterns, precision, cache=True)
+        last_data_hessian = evaluation.hessian - prior_diagonal
         cache["psi"] = psi.copy()
         cache["utilities"] = evaluation.utilities
         cache["probabilities"] = evaluation.probabilities
@@ -145,7 +149,7 @@ def solve_patterns(
             )
         return objective_delta(psi, step, patterns, precision)
 
-    return newton(
+    result = newton(
         lambda psi: objective(psi, patterns, precision),
         lambda psi: objective_grad(psi, patterns, precision),
         lambda psi: objective_hess(psi, patterns, precision),
@@ -153,6 +157,14 @@ def solve_patterns(
         objective_delta=delta,
         decrement_scale=decrement_scale,
         evaluate=evaluate,
+    )
+    return SolveResult(
+        mode=result.mode,
+        lower_factor=result.lower_factor,
+        accepted_steps=result.accepted_steps,
+        decrement_sq=result.decrement_sq,
+        backtracks=result.backtracks,
+        data_hessian=last_data_hessian,
     )
 
 
@@ -203,31 +215,25 @@ def fit(
     patterns = build_patterns(pipeline.likelihood_rows, index, decks, spec)
     precision = _precision_vector(index)
     initial = _warm_start(index, warm_start)
-    frame: set[ClusterKey] = {
-        ("cluster", row.cluster_id) if row.cluster_id else ("game", row.game_id)
-        for row in pipeline.likelihood_rows
-    }
-    _validate_cluster_strata(cluster_strata, frame)
-    cluster_suites: dict[ClusterKey, set[str]] = {key: set() for key in frame}
-    cluster_engines: dict[ClusterKey, set[str]] = {key: set() for key in frame}
+    cluster_values: dict[ClusterKey, list[str | None]] = {}
     for row in pipeline.likelihood_rows:
         key: ClusterKey = ("cluster", row.cluster_id) if row.cluster_id else ("game", row.game_id)
-        cluster_suites[key].add(row.suite)
-        cluster_engines[key].add(row.engine_version)
-    frame_keys = tuple(sorted(frame))
-    cluster_table = {
-        key: (
-            next(iter(cluster_suites[key])) if len(cluster_suites[key]) == 1 else None,
-            next(iter(cluster_engines[key])) if len(cluster_engines[key]) == 1 else None,
-        )
-        for key in frame_keys
-    }
+        values = cluster_values.get(key)
+        if values is None:
+            cluster_values[key] = [row.suite, row.engine_version]
+        else:
+            if values[0] != row.suite:
+                values[0] = None
+            if values[1] != row.engine_version:
+                values[1] = None
+    frame_keys = tuple(sorted(cluster_values))
+    _validate_cluster_strata(cluster_strata, frame_keys)
+    cluster_table = {key: (cluster_values[key][0], cluster_values[key][1]) for key in frame_keys}
     stratum_crossings: dict[str, tuple[int, ...]] = {}
-    for column, values in (
-        ("suite", cluster_suites),
-        ("engine_version", cluster_engines),
-    ):
-        indices = tuple(index for index, key in enumerate(frame_keys) if len(values[key]) > 1)
+    for column, position in (("suite", 0), ("engine_version", 1)):
+        indices = tuple(
+            index for index, key in enumerate(frame_keys) if cluster_values[key][position] is None
+        )
         if indices:
             stratum_crossings[column] = indices
     retained_strata = (
@@ -246,7 +252,9 @@ def fit(
 
     row_space = row_space_basis(patterns, spec.tol_eig)
     null_space = null_space_basis(row_space)
-    data_hessian = likelihood_hess(solution.mode, patterns)
+    data_hessian = solution.data_hessian
+    if data_hessian is None:
+        data_hessian = likelihood_hess(solution.mode, patterns)
     context = ContrastContext(
         mode=solution.mode,
         lower_factor=solution.lower_factor,

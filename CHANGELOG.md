@@ -103,6 +103,10 @@ semantic versioning.
 - Numba was tested and rejected: the warm Hessian kernel is ~1.7× faster but
   the ~1.7 s JIT compile makes the one-shot 400k fit slower. Core stays
   NumPy/SciPy; process parallelism is the effective lever (ADR 0009).
+- Fit-level reuse: the final Newton likelihood Hessian is used for D2 instead
+  of recomputing it; cluster strata aggregate in one pass; the component
+  union-find is array-indexed with identical persisted roots (0.735 → 0.478 s
+  at 400k rows).
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

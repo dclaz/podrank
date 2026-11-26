@@ -41,7 +41,18 @@ are merged in replicate order and covered by a serial/parallel parity test.
 Each worker keeps its bootstrap serial. One BLAS thread per worker remains a
 reference-run requirement configured before Python starts.
 
-## Measurements
+### Fit-level follow-up
+
+- `solve_patterns` keeps the likelihood-only Hessian from the final accepted
+  Newton evaluation in `SolveResult.data_hessian`; `fit` reuses it for D2
+  instead of making a second Hessian pass (about 0.5 s at 400k rows).
+- Cluster suite/engine aggregation is a single pass with a two-slot value and
+  `None` for a crossing, instead of two sets per cluster.
+- `_component_map` uses array-indexed union-find over the sorted supported
+  agents. It preserves the exact persisted roots and takes 0.478 s at 400k rows
+  versus 0.735 s before.
+
+### Measurements
 
 Local dev machine; 400k-row synthetic `perf_large` shape unless stated.
 
@@ -55,6 +66,7 @@ Local dev machine; 400k-row synthetic `perf_large` shape unless stated.
 | Study 10 reps, standard SC1, 4 workers | — | 10.2 s |
 | Bootstrap 100 refits, 1 worker | 2.14 s | — |
 | Bootstrap 100 refits, 4 workers | — | 0.69 s |
+| Component union-find, 400k rows | 0.735 s | 0.478 s |
 
 The 10-rep study produced the same pooled coverage (`0.9341463414634147`) at
 1 and 4 workers.

@@ -27,6 +27,7 @@ class SolveResult:
     accepted_steps: int
     decrement_sq: float
     backtracks: int = 0
+    data_hessian: np.ndarray | None = None
 
 
 def _lower_factor(hessian: np.ndarray) -> np.ndarray:
