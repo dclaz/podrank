@@ -21,3 +21,4 @@ nav:
       - SC4 generator: decisions/0005-sc4-generator.md
       - SC1/SC2 ci_smoke results: decisions/0006-sc1-sc2-ci-smoke.md
       - Batched bootstrap SDWP: decisions/0007-batched-bootstrap-sdwp.md
+      - Vectorised setup and compression: decisions/0008-vectorised-setup-and-compression.md

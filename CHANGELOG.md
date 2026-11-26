@@ -91,6 +91,10 @@ semantic versioning.
   replicate modes together. On `standard`, 100-refit bootstrap SDWP drops from
   9.22 s to 0.41 s per replication; the 10-replication SC1/SC2 smoke drops from
   about 128 s to 33 s with identical coverage (ADR 0007).
+- Vectorised bootstrap setup and pattern compression (ADR 0008):
+  `_support_maps` 5.9 → 2.3 ms, `_gate` 0.54 → 0.10 ms, `build_patterns`
+  6.14 → 1.35 s at 400k rows, and 400k-row cold fit 9.12 → 4.33 s. Laplace
+  SDWP uses the batched matrix. Arrays and statistical results are unchanged.
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

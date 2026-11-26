@@ -7,7 +7,6 @@ kept only as a small reference representation for fixtures and equivalence tests
 
 from __future__ import annotations
 
-from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -241,12 +240,6 @@ def _reduction_matrix(
     return matrix
 
 
-def _effective_swaps(row: GameRow, spec: ModelSpec) -> tuple[int, int, int, int]:
-    if spec.swap_effect:
-        return row.swap_counts
-    return (0, 0, 0, 0)
-
-
 def build_patterns(
     rows: Sequence[GameRow],
     index: ParameterIndex,
@@ -255,13 +248,66 @@ def build_patterns(
 ) -> PatternTable:
     """Group likelihood-used rows by canonical compact design row."""
 
-    grouped: dict[PatternKey, list[GameRow]] = defaultdict(list)
-    for row in rows:
-        key: PatternKey = (row.agents, row.decks, _effective_swaps(row, spec))
-        grouped[key].append(row)
-
     agent_lookup = {agent_id: position for position, agent_id in enumerate(index.supported_agents)}
     deck_lookup = {deck_id: position for position, deck_id in enumerate(index.supported_decks)}
+    row_count = len(rows)
+
+    agent_indices = np.fromiter(
+        (agent_lookup[agent] for row in rows for agent in row.agents),
+        dtype=np.int32,
+        count=row_count * 4,
+    ).reshape(-1, 4)
+    deck_indices = np.fromiter(
+        (deck_lookup[deck] for row in rows for deck in row.decks),
+        dtype=np.int32,
+        count=row_count * 4,
+    ).reshape(-1, 4)
+    if spec.swap_effect:
+        swap_counts = np.fromiter(
+            (value for row in rows for value in row.swap_counts),
+            dtype=np.int32,
+            count=row_count * 4,
+        ).reshape(-1, 4)
+        keys = np.concatenate([agent_indices, deck_indices, swap_counts], axis=1)
+    else:
+        swap_counts = None
+        keys = np.concatenate([agent_indices, deck_indices], axis=1)
+
+    unique_keys, inverse = np.unique(keys, axis=0, return_inverse=True)
+    n_patterns = unique_keys.shape[0]
+    agent_array = np.ascontiguousarray(unique_keys[:, :4], dtype=np.int32)
+    deck_array = np.ascontiguousarray(unique_keys[:, 4:8], dtype=np.int32)
+    swap_array = (
+        np.ascontiguousarray(unique_keys[:, 8:12], dtype=np.int32) if spec.swap_effect else None
+    )
+
+    winners = [row.winner_seat for row in rows]
+    if any(winner is None for winner in winners):
+        raise ValueError("likelihood rows must have a winner_seat")
+    winner_array = np.asarray(winners, dtype=np.int64)
+    target_array = (
+        np.bincount(
+            inverse.astype(np.int64) * 4 + winner_array,
+            minlength=n_patterns * 4,
+        )
+        .reshape(n_patterns, 4)
+        .astype(np.int64)
+    )
+
+    cluster_keys = tuple(sorted({cluster_key(row) for row in rows}))
+    cluster_index = {key: position for position, key in enumerate(cluster_keys)}
+    cluster_per_row = np.fromiter(
+        (cluster_index[cluster_key(row)] for row in rows),
+        dtype=np.int64,
+        count=row_count,
+    )
+    triples = np.stack([inverse.astype(np.int64), winner_array, cluster_per_row], axis=1)
+    unique_triples, counts = np.unique(triples, axis=0, return_counts=True)
+    cluster_patterns = np.ascontiguousarray(unique_triples[:, 0], dtype=np.int32)
+    cluster_winner_seats = np.ascontiguousarray(unique_triples[:, 1], dtype=np.int8)
+    cluster_indices = np.ascontiguousarray(unique_triples[:, 2], dtype=np.int32)
+    cluster_count_values = np.ascontiguousarray(counts, dtype=np.int64)
+
     deck_mu_positions = np.array(
         [index.index(f"mu[{decks.by_id[deck_id].bracket}]") for deck_id in index.supported_decks],
         dtype=np.int32,
@@ -275,45 +321,6 @@ def build_patterns(
         dtype=np.int32,
     )
     eta_position = index.positions.get("eta")
-
-    agent_indices: list[list[int]] = []
-    deck_indices: list[list[int]] = []
-    target_rows: list[list[int]] = []
-    swap_rows: list[list[int]] = []
-    cluster_counts: dict[tuple[int, int, ClusterKey], int] = defaultdict(int)
-
-    for pattern_index, key in enumerate(sorted(grouped)):
-        pattern_rows = grouped[key]
-        agents = [agent_lookup[agent_id] for agent_id in key[0]]
-        deck_ids = [deck_lookup[deck_id] for deck_id in key[1]]
-        target = [0, 0, 0, 0]
-        for row in pattern_rows:
-            if row.winner_seat is None:  # guarded by the likelihood frame
-                raise ValueError("likelihood rows must have a winner_seat")
-            target[row.winner_seat] += 1
-            cluster_counts[(pattern_index, row.winner_seat, cluster_key(row))] += 1
-        agent_indices.append(agents)
-        deck_indices.append(deck_ids)
-        target_rows.append(target)
-        if spec.swap_effect:
-            swap_rows.append(list(key[2]))
-
-    agent_array = np.asarray(agent_indices, dtype=np.int32).reshape(-1, 4)
-    deck_array = np.asarray(deck_indices, dtype=np.int32).reshape(-1, 4)
-    target_array = np.asarray(target_rows, dtype=np.int64).reshape(-1, 4)
-    swap_array = np.asarray(swap_rows, dtype=np.int32).reshape(-1, 4) if spec.swap_effect else None
-
-    cluster_keys = tuple(sorted({cluster for (_, _, cluster) in cluster_counts}))
-    cluster_index = {cluster: position for position, cluster in enumerate(cluster_keys)}
-    ordered_clusters = sorted(cluster_counts)
-    cluster_patterns = np.array([item[0] for item in ordered_clusters], dtype=np.int32)
-    cluster_winner_seats = np.array([item[1] for item in ordered_clusters], dtype=np.int8)
-    cluster_indices = np.array(
-        [cluster_index[item[2]] for item in ordered_clusters], dtype=np.int32
-    )
-    cluster_count_values = np.array(
-        [cluster_counts[item] for item in ordered_clusters], dtype=np.int64
-    )
 
     reduction = _reduction_matrix(
         index,

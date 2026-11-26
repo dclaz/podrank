@@ -30,6 +30,7 @@ The library consumes records; it does not play games, train agents, schedule mat
 - Use the plan's plain-text formulas, float64 numerics, solver stopping rule, seeded RNG streams and canonical serialisation. Keep the expanded likelihood as a small test oracle for compression, not a second production path. No explicit matrix inverse where a Cholesky solve suffices.
 - Keep status, numeric value, headline eligibility and interval availability separate. The supported anchor has exact zero self-contrast but a numeric SDWP. Bootstrap eligibility is frozen from the original fit; replicate failures cannot suppress exact zero intervals or override an original-fit B4 suppression.
 - Once implementing R2, treat stochastic different-ID reruns as diagnostics, not contradictions. Keep same-ID integrity checks, deterministic replay, event order and revisioned exports as specified. Compare complete-data means at a fixed horizon for S11, not means selected by stopping.
+- We aim for super high performance code. Vectorize where possible. Test different implementations if necessary to find the fast runtime code.
 
 ## P2 performance fix
 

@@ -754,11 +754,21 @@ class Posterior:
         else:
             assert seed is not None
             draws = self.sample(n_draws, seed)
+            if self.patterns.compact is not None:
+                draw_matrix = self._sdwp_matrix(field, [item[0] for item in preliminary], draws)
+                draw_values = {
+                    item[0]: draw_matrix[:, index] for index, item in enumerate(preliminary)
+                }
+            else:
+                draw_values = {
+                    agent_id: np.array(
+                        [self._sdwp_for_draw(field, agent_id, draw) for draw in draws],
+                        dtype=np.float64,
+                    )
+                    for agent_id, _, _ in preliminary
+                }
             for agent_id, value, failing in preliminary:
-                values = np.array(
-                    [self._sdwp_for_draw(field, agent_id, draw) for draw in draws],
-                    dtype=np.float64,
-                )
+                values = draw_values[agent_id]
                 lo, hi = np.quantile(values, [0.025, 0.975], method="linear")
                 label = "prior_dependent_field" if failing else "field_identified"
                 rows.append(

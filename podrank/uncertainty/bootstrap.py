@@ -89,10 +89,14 @@ class BootstrapResult:
             return False, ("insufficient_clusters",), None
         if self.failed_fraction > 0.05:
             return False, ("unstable_bootstrap",), None
-        n_zero = 0
-        for weights in self.replicate_weights:
-            if any(float(weights[list(support)].sum()) == 0.0 for support in support_sets):
-                n_zero += 1
+        zero_support = np.zeros(self.replicate_weights.shape[0], dtype=bool)
+        for support in support_sets:
+            if not support:
+                zero_support[:] = True
+                break
+            indices = np.fromiter(support, dtype=np.int64, count=len(support))
+            zero_support |= ~np.any(self.replicate_weights[:, indices] != 0, axis=1)
+        n_zero = int(np.count_nonzero(zero_support))
         if n_zero / self.n_converged > 0.05:
             return False, ("insufficient_clusters",), n_zero
         return True, (), n_zero
@@ -327,17 +331,25 @@ class BootstrapResult:
 
 
 def _replicate_targets(compact: CompactPatterns, weights: np.ndarray) -> np.ndarray:
-    targets = np.zeros((compact.n_patterns, 4), dtype=np.int64)
-    np.add.at(
-        targets,
-        (
-            np.asarray(compact.cluster_patterns, dtype=np.int64),
-            np.asarray(compact.cluster_winner_seats, dtype=np.int64),
-        ),
-        weights[np.asarray(compact.cluster_indices, dtype=np.int64)]
-        * np.asarray(compact.cluster_counts, dtype=np.int64),
+    flat = _target_flat(compact)
+    return _replicate_targets_from_flat(compact, weights, flat, compact.n_patterns * 4)
+
+
+def _target_flat(compact: CompactPatterns) -> np.ndarray:
+    return compact.cluster_patterns.astype(np.int64) * 4 + compact.cluster_winner_seats.astype(
+        np.int64
     )
-    return targets
+
+
+def _replicate_targets_from_flat(
+    compact: CompactPatterns, weights: np.ndarray, flat: np.ndarray, size: int
+) -> np.ndarray:
+    values = weights[compact.cluster_indices] * compact.cluster_counts
+    return (
+        np.bincount(flat, weights=values, minlength=size)
+        .astype(np.int64)
+        .reshape(compact.n_patterns, 4)
+    )
 
 
 def _refit_weights(post: Posterior, weights: np.ndarray) -> np.ndarray:
@@ -368,25 +380,32 @@ def _support_maps(
     if compact is None:
         raise ValueError("cluster bootstrap requires compact pattern state")
     frame_index = {key: index for index, key in enumerate(frame_keys)}
-    cluster_to_frame = [frame_index[key] for key in compact.cluster_keys]
-    agent_clusters: dict[str, set[int]] = {
-        agent_id: set() for agent_id in posterior.parameter_index.supported_agents
-    }
-    deck_clusters: dict[str, set[int]] = {
-        deck_id: set() for deck_id in posterior.parameter_index.supported_decks
-    }
+    cluster_to_frame = np.array([frame_index[key] for key in compact.cluster_keys], dtype=np.int64)
+    frame_count = len(frame_keys)
+    frames = cluster_to_frame[compact.cluster_indices.astype(np.int64)]
+    patterns = compact.cluster_patterns.astype(np.int64)
     agents = posterior.parameter_index.supported_agents
     decks = posterior.parameter_index.supported_decks
-    for pattern_index, cluster_index in zip(
-        compact.cluster_patterns, compact.cluster_indices, strict=True
-    ):
-        frame = cluster_to_frame[int(cluster_index)]
-        for seat in range(4):
-            agent_clusters[agents[int(compact.agent_indices[pattern_index, seat])]].add(frame)
-            deck_clusters[decks[int(compact.deck_indices[pattern_index, seat])]].add(frame)
+
+    def entity_sets(entity_indices: np.ndarray, count: int) -> list[frozenset[int]]:
+        flat = (entity_indices.astype(np.int64) * frame_count + frames[:, None]).ravel()
+        unique = np.unique(flat)
+        entity = unique // frame_count
+        frame = unique % frame_count
+        order = np.argsort(entity, kind="stable")
+        entity = entity[order]
+        frame = frame[order]
+        boundaries = np.searchsorted(entity, np.arange(count + 1))
+        return [
+            frozenset(frame[boundaries[index] : boundaries[index + 1]].tolist())
+            for index in range(count)
+        ]
+
+    agent_sets = entity_sets(compact.agent_indices[patterns], len(agents))
+    deck_sets = entity_sets(compact.deck_indices[patterns], len(decks))
     return (
-        {key: frozenset(values) for key, values in agent_clusters.items()},
-        {key: frozenset(values) for key, values in deck_clusters.items()},
+        {agent: agent_sets[index] for index, agent in enumerate(agents)},
+        {deck: deck_sets[index] for index, deck in enumerate(decks)},
     )
 
 
@@ -423,6 +442,8 @@ class _WorkerState:
     seed: int
     frame_size: int
     groups: list[list[int]] | None
+    target_flat: np.ndarray
+    target_size: int
 
 
 _WORKER_STATE: _WorkerState | None = None
@@ -435,6 +456,9 @@ def _make_worker_state(
     groups: list[list[int]] | None,
 ) -> _WorkerState:
     index = post.parameter_index
+    compact = post.patterns.compact
+    if compact is None:
+        raise ValueError("cluster bootstrap requires compact pattern state")
     picklable_index = ParameterIndex(
         names=index.names,
         positions=dict(index.positions),
@@ -447,7 +471,7 @@ def _make_worker_state(
     return _WorkerState(
         patterns=PatternTable(
             index=picklable_index,
-            compact=post.patterns.compact,
+            compact=compact,
             patterns=(),
             cluster_counts=dict(post.patterns.cluster_counts),
             n_games=post.patterns.n_games,
@@ -457,6 +481,8 @@ def _make_worker_state(
         seed=seed,
         frame_size=frame_size,
         groups=groups,
+        target_flat=_target_flat(compact),
+        target_size=compact.n_patterns * 4,
     )
 
 
@@ -482,7 +508,7 @@ def _run_replicate(state: _WorkerState, replicate: int) -> tuple[np.ndarray, np.
     compact = state.patterns.compact
     if compact is None:
         raise ValueError("cluster bootstrap requires compact pattern state")
-    targets = _replicate_targets(compact, weights)
+    targets = _replicate_targets_from_flat(compact, weights, state.target_flat, state.target_size)
     replicate_table = replace(
         state.patterns,
         compact=replace(compact, targets=targets),
