@@ -482,8 +482,11 @@ def run_pipeline(
             )
         )
 
-    # I0 step 1: schema, shape and UTC normalisation.
-    normalised: list[tuple[int, GameRow]] = []
+    # I0 step 1 + 2: normalise once, deduplicating exact duplicates as we go.
+    deduplicated: list[tuple[int, GameRow]] = []
+    seen: dict[str, GameRow] = {}
+    encoded_first: dict[str, str] = {}
+    exact_duplicates = 0
     for index, record in enumerate(games):
         try:
             row = normalize_game_row(record)
@@ -492,14 +495,6 @@ def run_pipeline(
                 raise
             issue(exc, index, _record_game_id(record))
             continue
-        normalised.append((index, row))
-
-    # I0 step 2: exact-duplicate removal; conflicting IDs are errors.
-    deduplicated: list[tuple[int, GameRow]] = []
-    seen: dict[str, GameRow] = {}
-    encoded_first: dict[str, str] = {}
-    exact_duplicates = 0
-    for index, row in normalised:
         previous = seen.get(row.game_id)
         if previous is None:
             seen[row.game_id] = row

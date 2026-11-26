@@ -23,8 +23,11 @@ per context. The dense/small-fixture path remains as the reference.
 
 ### Ingestion fast paths
 
-- `GameTable.from_records` clones JSON-like containers directly instead of
-  `copy.deepcopy(dict(record))`, and avoids the extra top-level dict copy.
+- `GameTable.from_records` copies the record dict once, copies the five known
+  seat-list fields with `list.copy()`, and only recursively clones `audit` or
+  unknown containers. This replaces `copy.deepcopy(dict(record))`.
+- The I0 normalization and exact-duplicate passes are merged into one pass,
+  removing the intermediate `normalised` list and its second iteration.
 - RFC 3339 parsing and canonical timestamp formatting are cached (8192
   entries); non-`played_at` field names keep their original error path.
 - `_sequence4` returns the supplied sequence instead of copying it to a list.
@@ -45,9 +48,9 @@ Local dev machine; 400k-row synthetic `perf_large` shape unless stated.
 | Measurement | Before | After |
 |---|---:|---:|
 | `predict_proba`, 10k contexts | 0.534 s | 0.144 s |
-| `GameTable.from_records`, 400k rows | 6.9 s | 4.4 s |
-| I0 pipeline, 400k rows | 12.4 s | 10.1 s |
-| End-to-end process, 400k rows | 30.8 s | 25.3 s |
+| `GameTable.from_records`, 400k rows | 6.9 s | 3.3 s |
+| I0 pipeline, 400k rows | 12.4 s | 10.3 s |
+| End-to-end process, 400k rows | 30.8 s | 24.2 s |
 | Study 10 reps, standard SC1, 1 worker | 26.4 s | — |
 | Study 10 reps, standard SC1, 4 workers | — | 10.2 s |
 | Bootstrap 100 refits, 1 worker | 2.14 s | — |

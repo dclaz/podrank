@@ -96,7 +96,7 @@ semantic versioning.
   6.14 → 1.35 s at 400k rows, and 400k-row cold fit 9.12 → 4.33 s. Laplace
   SDWP uses the batched matrix. Arrays and statistical results are unchanged.
 - Compact `predict_proba` 0.534 → 0.144 s for 10k contexts; ingestion fast
-  paths cut `GameTable.from_records` 6.9 → 4.4 s and I0 12.4 → 10.1 s at 400k
+  paths cut `GameTable.from_records` 6.9 → 3.3 s and I0 12.4 → 10.3 s at 400k
   rows (ADR 0009).
 - `run_study(..., workers=...)` spreads replications over a process pool:
   10 standard SC1 reps 26.4 → 10.2 s on 4 workers with identical coverage.

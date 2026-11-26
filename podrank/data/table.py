@@ -123,6 +123,11 @@ def _clone_json_like(value: object) -> object:
     return copy.deepcopy(value)
 
 
+_FAST_LIST_FIELDS = frozenset(
+    {"agents", "decks", "policy_versions", "deck_versions", "swap_counts"}
+)
+
+
 def _freeze_raw(record: Mapping[str, object]) -> Mapping[str, object]:
     if not isinstance(record, Mapping):
         raise ValidationError("each game record must be a mapping")
@@ -130,10 +135,16 @@ def _freeze_raw(record: Mapping[str, object]) -> Mapping[str, object]:
         if not isinstance(key, str):
             raise ValidationError("game record keys must be strings")
     try:
-        copied = _clone_json_like(record)
+        copied = dict(record)
+        for key, value in record.items():
+            if key in _FAST_LIST_FIELDS and type(value) is list:
+                copied[key] = value.copy()
+            elif key == "audit" and type(value) is dict:
+                copied[key] = _clone_json_like(value)
+            elif isinstance(value, (dict, Mapping, list, tuple)):
+                copied[key] = _clone_json_like(value)
     except Exception as exc:  # pragma: no cover - defensive for exotic inputs
         raise ValidationError(f"game record could not be copied: {exc}") from exc
-    assert isinstance(copied, dict)
     return MappingProxyType(copied)
 
 
