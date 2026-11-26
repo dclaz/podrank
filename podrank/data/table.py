@@ -13,6 +13,7 @@ import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import lru_cache
 from types import MappingProxyType
 from typing import cast
 
@@ -69,13 +70,12 @@ def _optional_string(value: object, field_name: str) -> str | None:
     return _string(value, field_name)
 
 
-def _sequence4(value: object, field_name: str) -> list[object]:
+def _sequence4(value: object, field_name: str) -> Sequence[object]:
     if isinstance(value, (str, bytes, bytearray)) or not isinstance(value, Sequence):
         raise ValidationError(f"{field_name} must be a sequence of length 4")
-    items = list(value)
-    if len(items) != 4:
-        raise ValidationError(f"{field_name} must have length 4, got {len(items)}")
-    return items
+    if len(value) != 4:
+        raise ValidationError(f"{field_name} must have length 4, got {len(value)}")
+    return value
 
 
 def _integer(value: object, field_name: str, *, minimum: int | None = None) -> int:
@@ -109,6 +109,20 @@ def _audit(value: object) -> Mapping[str, object] | None:
     return MappingProxyType(cloned)
 
 
+def _clone_json_like(value: object) -> object:
+    """Clone the JSON-like containers in a raw record without deepcopy overhead."""
+
+    if value is None or isinstance(value, (str, int, float, bool, bytes)):
+        return value
+    if isinstance(value, Mapping):
+        return {key: _clone_json_like(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_clone_json_like(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_clone_json_like(item) for item in value)
+    return copy.deepcopy(value)
+
+
 def _freeze_raw(record: Mapping[str, object]) -> Mapping[str, object]:
     if not isinstance(record, Mapping):
         raise ValidationError("each game record must be a mapping")
@@ -116,9 +130,10 @@ def _freeze_raw(record: Mapping[str, object]) -> Mapping[str, object]:
         if not isinstance(key, str):
             raise ValidationError("game record keys must be strings")
     try:
-        copied = copy.deepcopy(dict(record))
+        copied = _clone_json_like(record)
     except Exception as exc:  # pragma: no cover - defensive for exotic inputs
         raise ValidationError(f"game record could not be copied: {exc}") from exc
+    assert isinstance(copied, dict)
     return MappingProxyType(copied)
 
 
@@ -142,15 +157,7 @@ class GameTable:
         return iter(self.rows)
 
 
-def normalize_timestamp(value: object, field_name: str = "played_at") -> datetime:
-    """Parse a timezone-aware datetime or RFC 3339 string and return UTC."""
-
-    if isinstance(value, datetime):
-        if value.tzinfo is None or value.utcoffset() is None:
-            raise ValidationError(f"{field_name} must be timezone-aware")
-        return value.astimezone(UTC)
-    if not isinstance(value, str):
-        raise ValidationError(f"{field_name} must be an aware datetime or RFC 3339 string")
+def _parse_rfc3339(value: str, field_name: str) -> datetime:
     match = _RFC3339.fullmatch(value)
     if match is None:
         raise ValidationError(f"{field_name} is not an RFC 3339 timestamp with an explicit offset")
@@ -170,18 +177,42 @@ def normalize_timestamp(value: object, field_name: str = "played_at") -> datetim
     return parsed.astimezone(UTC)
 
 
+@lru_cache(maxsize=8192)
+def _parse_played_at(value: str) -> datetime:
+    return _parse_rfc3339(value, "played_at")
+
+
+def normalize_timestamp(value: object, field_name: str = "played_at") -> datetime:
+    """Parse a timezone-aware datetime or RFC 3339 string and return UTC."""
+
+    if isinstance(value, datetime):
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValidationError(f"{field_name} must be timezone-aware")
+        return value.astimezone(UTC)
+    if not isinstance(value, str):
+        raise ValidationError(f"{field_name} must be an aware datetime or RFC 3339 string")
+    if field_name != "played_at":
+        return _parse_rfc3339(value, field_name)
+    return _parse_played_at(value)
+
+
+@lru_cache(maxsize=8192)
+def _format_timestamp_cached(value: datetime) -> str:
+    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
 def format_timestamp(value: datetime) -> str:
     """Format a UTC timestamp exactly as required by C.2."""
 
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValidationError("played_at must be timezone-aware")
-    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return _format_timestamp_cached(value)
 
 
 def normalize_game_row(record: Mapping[str, object]) -> GameRow:
     """Apply I0 step 1 to one raw record."""
 
-    keys = set(record)
+    keys = record.keys()
     missing = _REQUIRED_FIELDS - keys
     if missing:
         raise ValidationError(f"missing required game fields: {sorted(missing)}")

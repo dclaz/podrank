@@ -22,3 +22,4 @@ nav:
       - SC1/SC2 ci_smoke results: decisions/0006-sc1-sc2-ci-smoke.md
       - Batched bootstrap SDWP: decisions/0007-batched-bootstrap-sdwp.md
       - Vectorised setup and compression: decisions/0008-vectorised-setup-and-compression.md
+      - Prediction, ingestion and study parallelism: decisions/0009-prediction-ingestion-and-study-parallelism.md

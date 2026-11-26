@@ -95,6 +95,14 @@ semantic versioning.
   `_support_maps` 5.9 → 2.3 ms, `_gate` 0.54 → 0.10 ms, `build_patterns`
   6.14 → 1.35 s at 400k rows, and 400k-row cold fit 9.12 → 4.33 s. Laplace
   SDWP uses the batched matrix. Arrays and statistical results are unchanged.
+- Compact `predict_proba` 0.534 → 0.144 s for 10k contexts; ingestion fast
+  paths cut `GameTable.from_records` 6.9 → 4.4 s and I0 12.4 → 10.1 s at 400k
+  rows (ADR 0009).
+- `run_study(..., workers=...)` spreads replications over a process pool:
+  10 standard SC1 reps 26.4 → 10.2 s on 4 workers with identical coverage.
+- Numba was tested and rejected: the warm Hessian kernel is ~1.7× faster but
+  the ~1.7 s JIT compile makes the one-shot 400k fit slower. Core stays
+  NumPy/SciPy; process parallelism is the effective lever (ADR 0009).
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

@@ -82,6 +82,50 @@ def test_study_validation() -> None:
         run_study("x", world_name="doc_tiny", replications=0, bootstrap_replicates=1)
     with pytest.raises(ValueError, match="bootstrap_replicates"):
         run_study("x", world_name="doc_tiny", replications=1, bootstrap_replicates=0)
+    for workers in (True, False, 0, -1, 1.5):
+        with pytest.raises(ValueError, match="workers"):
+            run_study(
+                "x",
+                world_name="doc_tiny",
+                replications=1,
+                bootstrap_replicates=1,
+                workers=workers,
+            )
+
+
+def test_study_worker_parity() -> None:
+    serial = run_study(
+        "doc",
+        world_name="doc_tiny",
+        replications=2,
+        bootstrap_replicates=2,
+        seed=7,
+        workers=1,
+    )
+    parallel = run_study(
+        "doc",
+        world_name="doc_tiny",
+        replications=2,
+        bootstrap_replicates=2,
+        seed=7,
+        workers=2,
+    )
+    assert parallel.failed_replications == serial.failed_replications
+    assert len(parallel.quantities) == len(serial.quantities)
+    for left, right in zip(serial.quantities, parallel.quantities, strict=True):
+        assert left.key == right.key
+        assert left.n_scored == right.n_scored
+        assert left.n_emitted == right.n_emitted
+        assert left.n_hits == right.n_hits
+        assert left.truth == pytest.approx(right.truth, rel=0, abs=1e-15)
+        if left.coverage is None:
+            assert right.coverage is None
+        else:
+            assert right.coverage == pytest.approx(left.coverage, rel=0, abs=1e-15)
+        if left.mean_bias is None:
+            assert right.mean_bias is None
+        else:
+            assert right.mean_bias == pytest.approx(left.mean_bias, rel=0, abs=1e-15)
 
 
 def test_scoring_contrasts_are_deduplicated() -> None:

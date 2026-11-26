@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from itertools import permutations
 
+import numpy as np
 import pytest
 
 from podrank import (
@@ -13,11 +14,13 @@ from podrank import (
     FieldContext,
     GameTable,
     ModelSpec,
+    PredictionInput,
     UnknownEntityError,
     UnsupportedPredictionError,
     fit,
 )
 from podrank.errors import SwapsNotModelledError
+from podrank.rating.design import design_row
 from podrank.rating.identification import AnchorUnsupported, agent_vector, aliasing_residual
 from tests._fixtures import make_game, registries
 
@@ -245,6 +248,41 @@ def test_f17_output_statuses() -> None:
     assert not isinstance(report, AnchorUnsupported)
     assert [row.agent_id for row in report.rows] == ["H"]
     assert report.rows[0].sdwp > 0
+
+
+def test_compact_predict_proba_matches_manual_designs() -> None:
+    agents, decks = registries()
+    rows = [
+        make_game(
+            f"g{index}",
+            agents=("H", "A", "B", "C"),
+            decks=("d1", "d2", "d3", "d4"),
+            winner_seat=index % 4,
+        )
+        for index in range(4)
+    ]
+    post = fit(GameTable.from_records(rows), agents, decks)
+    contexts = [
+        PredictionInput(agents=("H", "A", "B", "C"), decks=("d1", "d2", "d3", "d4")),
+        PredictionInput(agents=("C", "B", "A", "H"), decks=("d4", "d3", "d2", "d1")),
+        PredictionInput(agents=("H", "A", "B", "C"), decks=("d2", "d1", "d3", "d4")),
+    ]
+    output = post.predict_proba(contexts)
+    for context, row in zip(contexts, output, strict=True):
+        design = design_row(
+            context.agents, context.decks, context.swap_counts, post.parameter_index, decks
+        )
+        utilities = design @ post.mode
+        shifted = np.exp(utilities - utilities.max())
+        expected = shifted / shifted.sum()
+        assert row.probabilities == pytest.approx(tuple(float(value) for value in expected))
+        failing: list[int] = []
+        for seat in range(1, 4):
+            residual = aliasing_residual(design[seat] - design[0], post.row_space)
+            if residual is not None and residual > post.spec.tol_alias:
+                failing.append(seat)
+        assert row.failing_seats == tuple(failing)
+        assert row.field_label == ("prior_dependent_field" if failing else "field_identified")
 
 
 def test_f20_prediction_and_pooled_swaps() -> None:

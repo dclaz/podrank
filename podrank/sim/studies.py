@@ -7,6 +7,9 @@ miss is reported for review, never converted into a test tolerance change.
 
 from __future__ import annotations
 
+import multiprocessing
+import sys
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from typing import Literal
 
@@ -177,6 +180,93 @@ def _default_field_contexts(world: SimWorld) -> int:
     return 24 if world.agents <= 6 else 400
 
 
+@dataclass(frozen=True, slots=True)
+class _StudyJob:
+    world_name: str
+    seed: int
+    replication: int
+    rho_div: float | None
+    redraw_delta: bool
+    field_contexts: int
+    bootstrap_replicates: int
+    min_clusters: int
+    min_entity_clusters: int
+
+
+StudyUpdate = tuple[int, int, int, float, float]
+
+
+def _process_context() -> multiprocessing.context.BaseContext:
+    return multiprocessing.get_context("fork" if sys.platform != "win32" else "spawn")
+
+
+def _replication_job(
+    job: _StudyJob,
+) -> tuple[int, dict[tuple[str, ...], StudyUpdate], bool]:
+    world = reference_world(job.world_name)
+    field = world.field(job.field_contexts)
+    contrasts = scoring_contrasts(world)
+    run_seed = replication_seed(job.seed, job.replication)
+    deck_effects = (
+        redraw_deck_effects(world, job.seed, job.replication) if job.redraw_delta else None
+    )
+    rows = standard_rows(
+        world,
+        run_seed=run_seed,
+        deck_effects=deck_effects,
+        rho_div=job.rho_div,
+    )
+    try:
+        post = fit(
+            GameTable.from_records(rows),
+            world.agent_registry(),
+            world.deck_registry(),
+        )
+    except (ConvergenceError, NoRankableEvidence):
+        return job.replication, {}, True
+    boot = cluster_bootstrap(
+        post,
+        n=job.bootstrap_replicates,
+        seed=run_seed,
+        min_clusters=job.min_clusters,
+        min_entity_clusters=job.min_entity_clusters,
+    )
+    updates: dict[tuple[str, ...], StudyUpdate] = {}
+    for _, left, right in contrasts:
+        result = boot.contrast(left, right)
+        if result.status not in {"weak", "identified"} or result.value is None:
+            continue
+        truth = world.theta[left] - world.theta[right]
+        emitted = 0
+        hits = 0
+        if result.interval is not None:
+            emitted = 1
+            hits = int(result.interval.lo <= truth <= result.interval.hi)
+        updates[("contrast", left, right)] = (
+            1,
+            emitted,
+            hits,
+            result.value - truth,
+            truth,
+        )
+    sdwp_report = boot.sdwp(field)
+    if isinstance(sdwp_report, AnchorUnsupported):
+        return job.replication, updates, True
+    truths = {
+        agent: truth_sdwp(world, field, agent, deck_effects=deck_effects)
+        for agent in world.agent_ids
+    }
+    for row in sdwp_report.rows:
+        truth = truths[row.agent_id]
+        emitted = 0
+        hits = 0
+        if row.interval is not None:
+            emitted = 1
+            hits = int(row.interval.lo <= truth <= row.interval.hi)
+        updates[("sdwp", row.agent_id)] = (1, emitted, hits, row.sdwp - truth, truth)
+    return job.replication, updates, False
+
+
 def run_study(
     scenario: str,
     *,
@@ -189,15 +279,23 @@ def run_study(
     field_contexts: int | None = None,
     min_clusters: int = 50,
     min_entity_clusters: int = 10,
+    workers: int = 1,
 ) -> StudyReport:
-    """Run one SC1/SC2-style coverage, emission and bias study."""
+    """Run one SC1/SC2-style coverage, emission and bias study.
+
+    Replications are independent. ``workers > 1`` spreads them over a process
+    pool; each worker keeps its bootstrap serial. One BLAS thread per worker is
+    a reference-run requirement, configured before Python starts.
+    """
 
     if replications < 1:
         raise ValueError("replications must be positive")
     if bootstrap_replicates < 1:
         raise ValueError("bootstrap_replicates must be positive")
+    if isinstance(workers, bool) or not isinstance(workers, int) or workers <= 0:
+        raise ValueError("workers must be a positive integer")
     world = reference_world(world_name)
-    field = world.field(
+    resolved_field_contexts = (
         _default_field_contexts(world) if field_contexts is None else field_contexts
     )
     contrasts = scoring_contrasts(world)
@@ -205,63 +303,41 @@ def run_study(
         ("contrast", left, right): _Accumulator("log_worth") for _, left, right in contrasts
     }
     accumulators.update((("sdwp", agent), _Accumulator("sdwp")) for agent in world.agent_ids)
-    failed = 0
-    for replication in range(replications):
-        run_seed = replication_seed(seed, replication)
-        deck_effects = redraw_deck_effects(world, seed, replication) if redraw_delta else None
-        rows = standard_rows(
-            world,
-            run_seed=run_seed,
-            deck_effects=deck_effects,
+
+    jobs = [
+        _StudyJob(
+            world_name=world_name,
+            seed=seed,
+            replication=replication,
             rho_div=rho_div,
-        )
-        try:
-            post = fit(
-                GameTable.from_records(rows),
-                world.agent_registry(),
-                world.deck_registry(),
-            )
-        except (ConvergenceError, NoRankableEvidence):
-            failed += 1
-            continue
-        boot = cluster_bootstrap(
-            post,
-            n=bootstrap_replicates,
-            seed=run_seed,
+            redraw_delta=redraw_delta,
+            field_contexts=resolved_field_contexts,
+            bootstrap_replicates=bootstrap_replicates,
             min_clusters=min_clusters,
             min_entity_clusters=min_entity_clusters,
         )
-        for _, left, right in contrasts:
-            result = boot.contrast(left, right)
-            if result.status not in {"weak", "identified"} or result.value is None:
-                continue
-            truth = world.theta[left] - world.theta[right]
-            accumulator = accumulators[("contrast", left, right)]
-            accumulator.n_scored += 1
-            accumulator.truth_sum += truth
-            accumulator.bias_sum += result.value - truth
-            if result.interval is not None:
-                accumulator.n_emitted += 1
-                if result.interval.lo <= truth <= result.interval.hi:
-                    accumulator.n_hits += 1
-        sdwp_report = boot.sdwp(field)
-        if isinstance(sdwp_report, AnchorUnsupported):
+        for replication in range(replications)
+    ]
+    if workers == 1:
+        results = [_replication_job(job) for job in jobs]
+    else:
+        with ProcessPoolExecutor(
+            max_workers=min(workers, replications),
+            mp_context=_process_context(),
+        ) as executor:
+            results = list(executor.map(_replication_job, jobs))
+
+    failed = 0
+    for _, updates, failed_flag in results:
+        if failed_flag:
             failed += 1
-            continue
-        truths = {
-            agent: truth_sdwp(world, field, agent, deck_effects=deck_effects)
-            for agent in world.agent_ids
-        }
-        for row in sdwp_report.rows:
-            truth = truths[row.agent_id]
-            accumulator = accumulators[("sdwp", row.agent_id)]
-            accumulator.n_scored += 1
+        for key, (scored, emitted, hits, bias, truth) in updates.items():
+            accumulator = accumulators[key]
+            accumulator.n_scored += scored
+            accumulator.n_emitted += emitted
+            accumulator.n_hits += hits
+            accumulator.bias_sum += bias
             accumulator.truth_sum += truth
-            accumulator.bias_sum += row.sdwp - truth
-            if row.interval is not None:
-                accumulator.n_emitted += 1
-                if row.interval.lo <= truth <= row.interval.hi:
-                    accumulator.n_hits += 1
 
     quantities: list[StudyQuantity] = []
     for key in sorted(accumulators):

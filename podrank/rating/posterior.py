@@ -795,6 +795,102 @@ class Posterior:
             rows=tuple(rows),
         )
 
+    def _predict_proba_compact(
+        self, inputs: Sequence[PredictionInput]
+    ) -> tuple[PredictionRow, ...]:
+        compact = self.patterns.compact
+        if compact is None:
+            raise ValueError("compact prediction requires a compact pattern table")
+        index = self.parameter_index
+        agent_lookup = {agent: position for position, agent in enumerate(index.supported_agents)}
+        deck_lookup = {deck: position for position, deck in enumerate(index.supported_decks)}
+        count = len(inputs)
+        agent_indices = np.array(
+            [[agent_lookup[agent] for agent in context.agents] for context in inputs],
+            dtype=np.int64,
+        )
+        deck_indices = np.array(
+            [[deck_lookup[deck] for deck in context.decks] for context in inputs],
+            dtype=np.int64,
+        )
+        theta_start = index.block_slices["theta"][0]
+        utilities = (
+            self.mode[theta_start + agent_indices]
+            + self.mode[compact.deck_mu_positions[deck_indices]]
+            + self.mode[compact.deck_delta_positions[deck_indices]]
+            + self.mode[compact.seat_positions]
+        )
+        swaps = None
+        eta_position = compact.eta_position
+        if self.spec.swap_effect:
+            swaps = np.array([context.swap_counts for context in inputs], dtype=np.int64)
+            assert eta_position is not None
+            utilities = utilities + self.mode[eta_position] * swaps
+        probabilities = _probabilities_rows(utilities)
+
+        failing = np.zeros((count, 4), dtype=bool)
+        if self.null_space.shape[1] > 0:
+            null = self.null_space
+            parameter_count = len(index)
+            chunk_size = 20_000
+            for start in range(0, count, chunk_size):
+                stop = min(start + chunk_size, count)
+                rows = np.arange(stop - start)
+                for seat in range(1, 4):
+                    difference = np.zeros((stop - start, parameter_count), dtype=np.float64)
+                    difference[rows, theta_start + agent_indices[start:stop, seat]] += 1.0
+                    difference[rows, theta_start + agent_indices[start:stop, 0]] -= 1.0
+                    difference[
+                        rows,
+                        compact.deck_mu_positions[deck_indices[start:stop, seat]],
+                    ] += 1.0
+                    difference[
+                        rows,
+                        compact.deck_mu_positions[deck_indices[start:stop, 0]],
+                    ] -= 1.0
+                    difference[
+                        rows,
+                        compact.deck_delta_positions[deck_indices[start:stop, seat]],
+                    ] += 1.0
+                    difference[
+                        rows,
+                        compact.deck_delta_positions[deck_indices[start:stop, 0]],
+                    ] -= 1.0
+                    difference[rows, compact.seat_positions[seat]] += 1.0
+                    difference[rows, compact.seat_positions[0]] -= 1.0
+                    if swaps is not None and eta_position is not None:
+                        difference[rows, eta_position] += (
+                            swaps[start:stop, seat] - swaps[start:stop, 0]
+                        )
+                    projected = difference @ null
+                    norms = np.linalg.norm(difference, axis=1)
+                    residuals = np.zeros(stop - start, dtype=np.float64)
+                    np.divide(
+                        np.linalg.norm(projected, axis=1),
+                        norms,
+                        out=residuals,
+                        where=norms > 0,
+                    )
+                    failing[start:stop, seat] = residuals > self.spec.tol_alias
+
+        rows_out: list[PredictionRow] = []
+        for row_index in range(count):
+            failing_seats = tuple(int(seat) for seat in np.flatnonzero(failing[row_index]))
+            rows_out.append(
+                PredictionRow(
+                    probabilities=(
+                        float(probabilities[row_index, 0]),
+                        float(probabilities[row_index, 1]),
+                        float(probabilities[row_index, 2]),
+                        float(probabilities[row_index, 3]),
+                    ),
+                    field_label=("prior_dependent_field" if failing_seats else "field_identified"),
+                    failing_seats=failing_seats,
+                    labels=self._labels,
+                )
+            )
+        return tuple(rows_out)
+
     def predict_proba(
         self, contexts: Sequence[PredictionInput | Mapping[str, object]]
     ) -> tuple[PredictionRow, ...]:
@@ -826,6 +922,9 @@ class Posterior:
                 raise SwapsNotModelledError(
                     "prediction has nonzero swap counts while the swap effect is off"
                 )
+
+        if self.patterns.compact is not None and inputs:
+            return self._predict_proba_compact(inputs)
 
         rows: list[PredictionRow] = []
         for context in inputs:
