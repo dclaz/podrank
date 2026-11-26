@@ -56,9 +56,17 @@ semantic versioning.
   → SDWP → 100-replicate bootstrap vertical slice.
 - Ordinary `doc_tiny` world with the standard composition stream, shared-luck
   Gumbel noise, 5% draws and 1% caps.
-- Frozen `ci_smoke`, `standard` and `perf_large` world definitions and
+- Frozen `ci_smoke`, `standard` and `perf_large` world definitions,
   deterministic SC5 disconnected-component, SC6 all/draw-only and SC8
-  unsupported-anchor smoke checks.
+  unsupported-anchor checks.
+- Pinned-deck scenario generator with exclusive agent/deck pairs, reserved
+  decisive clusters, anchor connectivity and the `v'Gv <= 1e-12 ||G||` D4
+  null-space assertion; SC7 classifies both pinned agents `aliased` in every
+  pass and omits them from headline SDWP.
+- SC3b crossover augmentation: exactly two crossover clusters make the first
+  pinned agent's anchor contrast pass D4 while the second stays aliased.
+- `difference_gram()` exposes the D4 Gram used by the scenario generator
+  assertions without materialising difference rows.
 - Windows CI now runs the bootstrap `spawn`/serial parity subset.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.

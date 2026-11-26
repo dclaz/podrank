@@ -10,10 +10,10 @@ end-to-end time is dominated by I0. The P3 cluster-bootstrap core is available
 under `podrank.uncertainty`; ordinary `doc_tiny` and the `doc_tiny_balanced`
 vertical slice pass, and serial/Linux `fork`/Linux `spawn` bootstrap parity is
 tested. A Windows `spawn` parity step is wired into CI but has not yet run
-green. `ci_smoke`, `standard` and `perf_large` world definitions and
-deterministic SC5/SC6/SC8 smoke checks exist; SC1/SC2/SC3/SC3b/SC4/SC7 full
-gates and the 16-core bootstrap benchmark remain pending. The comparison API is
-not exposed yet. Details are recorded in
+green. `ci_smoke`, `standard` and `perf_large` world definitions,
+deterministic SC5/SC6/SC7/SC8 checks and the SC3b crossover report check exist;
+SC1/SC2/SC3/SC4 statistical or report gates and the 16-core bootstrap benchmark
+remain pending. The comparison API is not exposed yet. Details are recorded in
 `docs/decisions/0002-p2-performance-spike.md` and
 `docs/decisions/0004-bootstrap-workers.md`.
 

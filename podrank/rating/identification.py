@@ -194,8 +194,8 @@ def build_components(
     )
 
 
-def row_space_basis(patterns: PatternTable, tol_eig: float) -> np.ndarray:
-    """Return an orthonormal basis of the within-game difference row space."""
+def difference_gram(patterns: PatternTable) -> np.ndarray:
+    """Return the D4 within-game difference Gram matrix on full coordinates."""
 
     n_parameters = len(patterns.index)
     compact = patterns.compact
@@ -238,14 +238,21 @@ def row_space_basis(patterns: PatternTable, tol_eig: float) -> np.ndarray:
                                 flat_transposed, weights=values, minlength=reduced_size**2
                             )
         gram_reduced = gram_flat.reshape(reduced_size, reduced_size)
-        gram = compact.reduction @ gram_reduced @ compact.reduction.T
-    else:
-        gram = np.zeros((n_parameters, n_parameters), dtype=np.float64)
-        for pattern in patterns.patterns:
-            base = pattern.design[0]
-            for seat in range(1, 4):
-                difference = pattern.design[seat] - base
-                gram += np.outer(difference, difference)
+        return np.asarray(compact.reduction @ gram_reduced @ compact.reduction.T, dtype=np.float64)
+    gram = np.zeros((n_parameters, n_parameters), dtype=np.float64)
+    for pattern in patterns.patterns:
+        base = pattern.design[0]
+        for seat in range(1, 4):
+            difference = pattern.design[seat] - base
+            gram += np.outer(difference, difference)
+    return gram
+
+
+def row_space_basis(patterns: PatternTable, tol_eig: float) -> np.ndarray:
+    """Return an orthonormal basis of the within-game difference row space."""
+
+    n_parameters = len(patterns.index)
+    gram = difference_gram(patterns)
     if not np.any(gram):
         return np.zeros((n_parameters, 0), dtype=np.float64)
     eigenvalues, eigenvectors = np.linalg.eigh(gram)
@@ -538,6 +545,7 @@ __all__ = [
     "build_components",
     "build_eligibility",
     "build_identification_report",
+    "difference_gram",
     "evaluate_contrast",
     "null_space_basis",
     "row_space_basis",
