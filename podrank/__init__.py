@@ -6,6 +6,10 @@ posterior reports, fields, prediction, archive persistence and cluster
 bootstrap. The comparison entry point arrives in a later phase.
 """
 
+from __future__ import annotations
+
+from types import ModuleType
+
 from podrank import sim, uncertainty
 from podrank._version import __version__
 from podrank.constants import N_SEATS
@@ -127,8 +131,19 @@ __all__ = [
     "ValidationIssue",
     "ValidationReport",
     "__version__",
+    "compare",
     "fit",
     "sim",
     "uncertainty",
     "validate",
 ]
+
+
+def __getattr__(name: str) -> ModuleType:
+    """Expose the R2 package lazily so R1 imports never load it."""
+
+    if name == "compare":
+        from importlib import import_module
+
+        return import_module("podrank.compare")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

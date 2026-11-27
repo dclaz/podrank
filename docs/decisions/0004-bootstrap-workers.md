@@ -1,6 +1,7 @@
 # 0004. Bootstrap worker API and BLAS thread policy
 
 - **Status:** Accepted
+- **Superseded in part by:** [0011](0011-drop-windows-support.md) (Windows platform scope)
 - **Date:** 2026-11-26
 - **Phase:** P3
 - **Contract/section:** Appendix C.1, §5.3, §12
@@ -23,7 +24,7 @@ effect.
   diagnostics, statuses or intervals beyond the specified numeric tolerance.
 - Process-pool workers receive picklable compact read-only state once, derive
   their RNG stream from the replicate index, and results are collected in
-  replicate order. Linux uses `fork`; Windows uses `spawn`.
+  replicate order. The start method is the platform default.
 - `cluster_bootstrap()` does not mutate process-wide thread environment
   variables. One BLAS thread per worker is a **verified reference-benchmark
   requirement**, not a runtime guarantee. Set the relevant thread variables
@@ -35,9 +36,13 @@ effect.
 ## Consequences
 
 - The public worker option is pinned in Appendix C.1.
-- Linux `fork` and Linux `spawn` parity are tested; a Windows `spawn` parity
-  step is wired into CI, but a green Windows run and the 16-core 400-refit
-  benchmark remain pending.
+- `fork` and `spawn` start-method parity is tested; the 16-core 400-refit
+  benchmark remains pending.
+
+**Update (2026-11-26):** Windows support was dropped in
+[0011](0011-drop-windows-support.md). The start method now follows the
+platform default, and the `spawn`/serial parity test remains as a start-method
+check.
 - No `threadpoolctl` runtime dependency is added to the NumPy/SciPy core.
 - Reference benchmark reports must state the process start method, verified
   worker BLAS limits, elapsed time and peak memory across parent and workers,

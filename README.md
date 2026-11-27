@@ -14,24 +14,29 @@ R1 never depends on `podrank.compare`.
 
 ## Status
 
-**P2 rating core implemented.** The package provides immutable `AgentRegistry`
+**R1 rating core implemented.** The package provides immutable `AgentRegistry`
 and `DeckRegistry` snapshots, an order-preserving `GameTable`, `validate`, the
 shared I0–I5 inclusion pipeline, and the R1 rating core: `fit`, posterior
-contrasts/components/eligibility, reference fields, SDWP, prediction and
-persistence. The §12 cold-fit and SDWP targets pass on the local synthetic
-`perf_large` proxy; the official 16-core reference run is still required, and
-end-to-end time is currently dominated by I0. See
-[`docs/decisions/0002-p2-performance-spike.md`](docs/decisions/0002-p2-performance-spike.md).
-The P3 cluster-bootstrap core (`podrank.uncertainty`), tuple-key diagnostics,
-serial/Linux `fork`/Linux `spawn` replicate execution, ordinary `doc_tiny`,
-the `doc_tiny_balanced` vertical slice and a Windows `spawn` parity CI step are
-available. `ci_smoke`, `standard` and `perf_large` world definitions plus
-deterministic SC3/SC4/SC5/SC6/SC7/SC8 checks and the SC3b crossover report check
-exist. The 50-replication SC1/SC2 `ci_smoke` study runs in CI: SC1 passes
-pooled coverage, while SC2 misses it (ADR 0006). The full `standard` SC1 study
-also passes (1000 replications, pooled coverage 0.9434); the `standard` SC2
-run is scheduled on the main computer. Green Windows CI and the 16-core
-bootstrap benchmark remain pending. The comparison API is not implemented.
+contrasts/components/eligibility, fields, SDWP, prediction and persistence.
+The P3 cluster-bootstrap core (`podrank.uncertainty`) provides tuple-key
+diagnostics, serial and process-parallel replicate execution using the
+platform's default start method, and the seeded, frozen-frame resampling rules. Ordinary `doc_tiny`, the
+`doc_tiny_balanced` vertical slice, the R1 concept/assumption/how-to/reference
+pages and a pinned-output documentation test are in place.
+
+`ci_smoke`, `standard` and `perf_large` world definitions plus deterministic
+SC3/SC4/SC5/SC6/SC7/SC8 checks and the SC3b crossover report check exist. The
+50-replication SC1/SC2 `ci_smoke` study runs in CI: SC1 passes pooled coverage,
+while SC2 misses it (ADR 0006). Both full `standard` studies pass at 1000
+replications: SC1 pooled coverage 0.9434 and SC2 (`rho_div = 0`) 0.9422, with
+emission 1.0 and no bias misses (ADR 0010). The §12 cold-fit and SDWP targets
+pass on the local synthetic `perf_large` proxy; the official 16-core reference
+run is still required, and end-to-end time is currently dominated by I0 (ADR
+0002). The 16-core reference benchmark remains pending. The R2 comparison core is implemented: canonical pod distributions, block
+descriptors, block scoring, fixed-mixture betting, the `Comparison` state
+machine (validation, resolution, consumption, invalidation and revisioned
+export), confidence sequences, full reports and schema-1 persistence. The full predefined-world S5/S11 run is recorded in ADR 0013; real-log
+validation remains an open R2 release item.
 Implementation phases follow [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) §15.
 
 ## Development
@@ -51,4 +56,11 @@ Documentation is built with `uv run --locked mkdocs build`.
 ## Documentation
 
 Concept pages, assumptions, limitations and decision records live in `docs/`.
+Start with the [quickstart](docs/index.md), then
+[ratings and fields](docs/concepts/ratings.md),
+[identification](docs/concepts/identification.md),
+[uncertainty](docs/concepts/uncertainty.md),
+[assumptions](docs/assumptions.md) and
+[limitations](docs/limitations.md). The
+[API reference](docs/reference/index.md) is generated from the package.
 Architectural decisions use the template in `docs/decisions/`.

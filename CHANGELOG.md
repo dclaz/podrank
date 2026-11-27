@@ -74,8 +74,9 @@ semantic versioning.
 - `podrank.sim.studies` SC1/SC2 harness: per-replication seeds, δ redrawn from
   N(0, 0.5²), `ρ_div` override, the deduplicated §11.3 scoring list, an
   independent SDWP truth calculation, and coverage/emission/bias reporting with
-  explicit target-miss diagnostics. The full 50/1,000-replication release runs
-  remain pending.
+  explicit target-miss diagnostics. The 50-replication `ci_smoke` and
+  1,000-replication `standard` SC1/SC2 release runs are recorded in ADRs 0006
+  and 0010.
 - `sim.standard_rows` exposes the ordinary world generator with run-seed and δ
   overrides and stays byte-identical to `world.game_rows()` at default settings.
 - SC4 misspecified generator with ordered-pair agent × deck and agent ×
@@ -84,7 +85,39 @@ semantic versioning.
 - A 50-replication SC1/SC2 `ci_smoke` study now runs in the CI `stat` job.
   SC1 pooled coverage passes; SC2 pooled coverage is 0.9095 and misses the
   [0.93, 0.97] target, recorded with its bias and per-quantity results in ADR
-  0006. The 1,000-replication `standard` release run remains pending.
+  0006.
+- Standard SC1/SC2 release-shape studies pass: 1000/1000 replications each,
+  41,000/41,000 intervals, emission 1.0, pooled coverage 0.9433658536585365
+  (SC1 rerun, identical to ADR 0006) and 0.9422195121951219 (SC2,
+  `rho_div = 0`), no target misses and no per-quantity coverage below 90%
+  (ADR 0010).
+- R1 documentation: quickstart, ratings/fields, identification and uncertainty
+  concepts, assumptions, limitations, glossary, the fit-from-logs and
+  define-a-field how-tos, and a mkdocstrings API reference. Concept examples use
+  the frozen `doc_tiny` world and show pinned outputs; `tests/test_docs_examples.py`
+  pins log-worth, SDWP and bootstrap intervals to 1e-6.
+- MkDocs math support (`pymdownx.arithmatex` plus MathJax) for the model
+  formulas.
+- R2 comparison data surfaces: canonical `PodDistribution` with a payload-only
+  hash, atomic persistence and seeded `sample`; `BlockDescriptor` validation
+  and `from_draw`; focal and duplicate/paired block scoring with E4 directional
+  bounds; `summarise_blocks`; and the fixed-mixture `Wealth` with E1 thresholds
+  (C1–C3, E1, F2–F4, F21 summary case).
+- `podrank.compare` is exposed lazily as `pr.compare`, so importing or using R1
+  never loads comparison code.
+- R2 `Comparison` core: atomic descriptor declaration, C2 row matching, event
+  classification (reject/transport duplicate/id conflict/integrity), stochastic
+  and deterministic resolution, frozen block consumption, budget extensions,
+  the failure rule, replay invalidation, status/report surfaces and revisioned
+  rating export. Fixtures F9, F12, F16, F19, F21 and E5 are covered.
+- R2 confidence sequences (E6/F13), full report contents, the §10.4 pairing
+  report (duplicate variance ratio and paired matched draw/cap denominator),
+  and schema-1 `Comparison.save/load` round-trips.
+- Reduced S5/S11 runner (`benchmarks/r2_studies.py`): 72 S5 boundary cells at
+  10,000 replications with no limit violations, and 16 S11 cells at 5,000
+  replications with two recorded flags; the full predefined-world reference run
+  remains open (ADR 0012).
+- R2 public-name scope guard and comparison how-to/reference docs.
 - Field context/recipe validation tests cover the malformed-context and
   malformed-recipe branches.
 - Batched bootstrap SDWP: `Posterior._sdwp_matrix` evaluates all agents and
@@ -118,10 +151,10 @@ semantic versioning.
   these entity counts.
 - Standard SC1 release-shape study passes: 1000/1000 replications, 41,000/41,000
   intervals, emission 1.0, pooled coverage 0.9433658536585365, no target misses.
-  Standard SC2 was started locally and interrupted; it is scheduled on the main
-  computer, so the P3 statistical gate remains open until that result is
-  recorded (ADR 0006).
-- Windows CI now runs the bootstrap `spawn`/serial parity subset.
+  Standard SC1 was rerun with the same result, and standard SC2 (`rho_div = 0`)
+  passes with 1000/1000 replications, 41,000/41,000 intervals, emission 1.0,
+  pooled coverage 0.9422195121951219 and no target misses (ADR 0010).
+- Bootstrap `spawn`/serial parity is covered by the Linux test suite.
 - Controlled F6-style frozen-index/prior-only and F18-style gate precedence
   tests, including real deck-support B4 and all-failed B5 extension cases.
 - Collision-safe tuple diagnostics keys for contrast, log-worth and
@@ -138,9 +171,15 @@ semantic versioning.
 - CI now runs the test suite under coverage on both Linux Python versions.
 - Added `scipy-stubs` to the development group for strict typing.
 
+### Removed
+
+- Windows support and the `windows-smoke` CI job. The process start method now
+  follows the platform default instead of branching on `win32`; Windows is not
+  a supported or tested platform (ADR 0011).
+
 ## [0.0.1] - 2026-11-26
 
 - Initial placeholder version reserved for the package name.
 - P0 scaffold: Hatchling packaging, locked development dependencies, typed
   `podrank` package with `py.typed`, smoke tests, ruff/mypy/pytest configuration,
-  documentation scaffold with an ADR template, and Linux/Windows CI.
+  documentation scaffold with an ADR template, and Linux CI.

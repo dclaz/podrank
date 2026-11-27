@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import multiprocessing
-import sys
 from collections.abc import Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field, replace
@@ -528,7 +527,7 @@ def _init_worker(state: _WorkerState) -> None:
 
 
 def _process_context() -> multiprocessing.context.BaseContext:
-    return multiprocessing.get_context("fork" if sys.platform != "win32" else "spawn")
+    return multiprocessing.get_context()
 
 
 def _worker_task(replicate: int) -> tuple[np.ndarray, np.ndarray | None]:

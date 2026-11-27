@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from podrank import sim
 
 
@@ -52,3 +54,21 @@ def test_ci_smoke_world_generates_fixed_size() -> None:
     assert len(rows) == 800
     assert len({row["cluster_id"] for row in rows}) == 200
     assert all(row["outcome"] in {"win", "draw", "cap", "failed"} for row in rows)
+
+
+def test_compare_worlds_are_calibrated() -> None:
+    from podrank.sim import reference_compare_world
+
+    null = reference_compare_world("cmp_null")
+    assert [cell.label for cell in null.cells] == [
+        "superiority_0",
+        "superiority_002",
+        "noninferiority_002",
+    ]
+    effect = reference_compare_world("cmp_effect")
+    assert [cell.mean for cell in effect.cells] == [0.005, 0.01, 0.02, 0.05]
+    for world in (null, effect):
+        for cell in world.cells:
+            for design in ("duplicate", "paired"):
+                theta = cell.theta_a(design)
+                assert world.mean_lift(theta, design) == pytest.approx(cell.mean, abs=1e-12)

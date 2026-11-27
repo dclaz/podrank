@@ -1,6 +1,7 @@
 # 0006. SC1/SC2 statistical study results
 
 - **Status:** Accepted (SC1 standard passed; SC2 standard pending)
+- **Superseded in part by:** [0010](0010-standard-sc2-result.md) (standard SC2 result)
 - **Date:** 2026-11-26
 - **Phase:** P3
 - **Contract/section:** §11.3, §14
@@ -64,6 +65,10 @@ The local SC2 run was started and interrupted before completion. It produced
 no partial result (`run_study` returns only at completion). SC2 will be run on
 the main computer; until that result is recorded, the SC2 statistical gate
 remains open.
+
+**Update (2026-11-27):** the `standard` SC2 run completed and passes pooled
+coverage, emission and bias; SC1 was re-run with the same result. See
+[0010](0010-standard-sc2-result.md).
 
 ## Review
 

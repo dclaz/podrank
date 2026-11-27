@@ -16,7 +16,7 @@ The library consumes records; it does not play games, train agents, schedule mat
 
 | Phase | Implement | Acceptance focus |
 |---|---|---|
-| P0 | Repository, `pyproject.toml` (Hatchling), uv lockfile, minimal typed package, smoke test, lint/type/test CI, docs scaffold and ADR template | Package imports; smoke test, lint and strict typing pass. Linux Python 3.12/3.13 and Windows smoke in CI. |
+| P0 | Repository, `pyproject.toml` (Hatchling), uv lockfile, minimal typed package, smoke test, lint/type/test CI, docs scaffold and ADR template | Package imports; smoke test, lint and strict typing pass. Linux Python 3.12/3.13 in CI. |
 | P1 | Immutable registry snapshots, `GameTable`, validation and I0–I5 inclusion | F7 and boundary tests, including malformed rows through `fit` once wired, duplicate game IDs, manifest ownership, null singleton keys, and reconciled counts. |
 | P2 | Luce rating core, compressed likelihood, solver, identification/eligibility, fields, prediction and posterior persistence | Relevant Appendix A fixtures, derivatives and invariance, field canonicalisation and round trips; complete the P2 performance checklist below and record the §12 spike. |
 | P3 | Weak-direction diagnostics, cluster bootstrap, scenario checks | F6 and F18; `doc_tiny_balanced` runs records → fit → eligibility → SDWP → bootstrap; §11/§15 gates satisfied. |

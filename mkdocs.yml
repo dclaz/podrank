@@ -11,6 +11,25 @@ plugins:
           paths: [.]
 nav:
   - Home: index.md
+  - Concepts:
+      - Ratings and fields: concepts/ratings.md
+      - Identification: concepts/identification.md
+      - Uncertainty: concepts/uncertainty.md
+  - Assumptions: assumptions.md
+  - How-to:
+      - Fit from logs: how-to/fit-from-logs.md
+      - Define a field: how-to/define-a-field.md
+      - Run a comparison: how-to/run-a-comparison.md
+  - Reference:
+      - Overview: reference/index.md
+      - podrank.data: reference/data.md
+      - podrank.rating: reference/rating.md
+      - podrank.uncertainty: reference/uncertainty.md
+      - podrank.sim: reference/sim.md
+      - podrank.errors: reference/errors.md
+      - podrank.compare: reference/compare.md
+  - Glossary: glossary.md
+  - Limitations: limitations.md
   - Decisions:
       - Overview: decisions/index.md
       - ADR template: decisions/0000-template.md
@@ -23,3 +42,17 @@ nav:
       - Batched bootstrap SDWP: decisions/0007-batched-bootstrap-sdwp.md
       - Vectorised setup and compression: decisions/0008-vectorised-setup-and-compression.md
       - Prediction, ingestion and study parallelism: decisions/0009-prediction-ingestion-and-study-parallelism.md
+      - Standard SC2 result: decisions/0010-standard-sc2-result.md
+      - Drop Windows support: decisions/0011-drop-windows-support.md
+      - Reduced S5/S11 run: decisions/0012-reduced-s5-s11.md
+      - Full S5/S11 run: decisions/0013-full-s5-s11.md
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js

@@ -1,0 +1,44 @@
+{
+  "name": "cmp_effect",
+  "seed": 707,
+  "a": "agent_00",
+  "b": "agent_01",
+  "theta_b": 0.0,
+  "draw_rate": 0.05,
+  "cap_rate": 0.01,
+  "world": "standard",
+  "cells": [
+    {
+      "label": "mu_0005",
+      "mean": 0.005,
+      "theta_a": {
+        "duplicate": -1.1686381230693383,
+        "paired": -1.0837043217221605
+      }
+    },
+    {
+      "label": "mu_001",
+      "mean": 0.01,
+      "theta_a": {
+        "duplicate": -1.1405116401130924,
+        "paired": -1.05480512069153
+      }
+    },
+    {
+      "label": "mu_002",
+      "mean": 0.02,
+      "theta_a": {
+        "duplicate": -1.0853628108188267,
+        "paired": -0.9974386656094492
+      }
+    },
+    {
+      "label": "mu_005",
+      "mean": 0.05,
+      "theta_a": {
+        "duplicate": -0.927628324723826,
+        "paired": -0.8282186399550289
+      }
+    }
+  ]
+}

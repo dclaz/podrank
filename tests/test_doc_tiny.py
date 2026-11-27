@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 
 import numpy as np
@@ -81,4 +82,16 @@ def test_doc_tiny_balanced_vertical_slice(tmp_path) -> None:
         assert row.interval.method == "cluster_bootstrap"
         assert row.interval.lo < row.interval.hi
 
-    assert "podrank.compare" not in sys.modules
+
+def test_r1_pipeline_does_not_import_compare() -> None:
+    code = (
+        "import sys, podrank as pr; "
+        "world = pr.sim.reference_world('doc_tiny_balanced'); "
+        "post = pr.fit(pr.GameTable.from_records(world.game_rows()), "
+        "world.agent_registry(), world.deck_registry()); "
+        "post.headline_eligibility(); "
+        "field = world.field(24); post.sdwp(field); "
+        "pr.uncertainty.cluster_bootstrap(post, n=1, seed=101); "
+        "assert 'podrank.compare' not in sys.modules"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)

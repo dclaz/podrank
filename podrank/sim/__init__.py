@@ -1,5 +1,6 @@
 """Synthetic reference worlds and deterministic simulators."""
 
+from podrank.sim.compare_worlds import CompareCell, CompareWorld, reference_compare_world
 from podrank.sim.scenarios import (
     alias_vector,
     append_crossover_clusters,
@@ -18,6 +19,8 @@ from podrank.sim.scenarios import (
 from podrank.sim.world import SimWorld, reference_world
 
 __all__ = [
+    "CompareCell",
+    "CompareWorld",
     "SimWorld",
     "alias_vector",
     "append_crossover_clusters",
@@ -26,6 +29,7 @@ __all__ = [
     "crossover_cluster_ids",
     "pinned_deck_rows",
     "pinned_roles",
+    "reference_compare_world",
     "reference_world",
     "sc3_roles",
     "sc3_rows",

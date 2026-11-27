@@ -1,0 +1,36 @@
+{
+  "name": "cmp_null",
+  "seed": 707,
+  "a": "agent_00",
+  "b": "agent_01",
+  "theta_b": 0.0,
+  "draw_rate": 0.05,
+  "cap_rate": 0.01,
+  "world": "standard",
+  "cells": [
+    {
+      "label": "superiority_0",
+      "mean": 0.0,
+      "theta_a": {
+        "duplicate": -1.1971564977613887,
+        "paired": -1.1127589065116972
+      }
+    },
+    {
+      "label": "superiority_002",
+      "mean": 0.02,
+      "theta_a": {
+        "duplicate": -1.0853628108188267,
+        "paired": -0.9974386656094492
+      }
+    },
+    {
+      "label": "noninferiority_002",
+      "mean": -0.02,
+      "theta_a": {
+        "duplicate": -1.3155531696759408,
+        "paired": -1.2307129704326374
+      }
+    }
+  ]
+}

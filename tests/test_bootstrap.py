@@ -166,7 +166,8 @@ def test_serial_parallel_bootstrap_parity() -> None:
     _assert_bootstrap_parity(serial, parallel)
 
 
-def test_linux_spawn_bootstrap_parity(monkeypatch) -> None:
+def test_spawn_start_method_bootstrap_parity(monkeypatch) -> None:
+    """The spawn start method (default on some POSIX platforms) must agree."""
     spawn = multiprocessing.get_context("spawn")
     monkeypatch.setattr(bootstrap_module, "_process_context", lambda: spawn)
     post = _posterior()

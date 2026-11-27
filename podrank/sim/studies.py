@@ -8,7 +8,6 @@ miss is reported for review, never converted into a test tolerance change.
 from __future__ import annotations
 
 import multiprocessing
-import sys
 from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from typing import Literal
@@ -197,7 +196,7 @@ StudyUpdate = tuple[int, int, int, float, float]
 
 
 def _process_context() -> multiprocessing.context.BaseContext:
-    return multiprocessing.get_context("fork" if sys.platform != "win32" else "spawn")
+    return multiprocessing.get_context()
 
 
 def _replication_job(
