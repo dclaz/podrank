@@ -118,6 +118,9 @@ semantic versioning.
   replications with two recorded flags; the full predefined-world reference run
   remains open (ADR 0012).
 - R2 public-name scope guard and comparison how-to/reference docs.
+- P4 R1 predictive diagnostics: `pr.diagnostics.predictive_quality` reports
+decisive-game log-loss and Brier (uniform, seat-only, θ-only, θ+deck, full),
+cluster-level means, exclusions and reliability bins with tests on `doc_tiny`.
 - Field context/recipe validation tests cover the malformed-context and
   malformed-recipe branches.
 - Batched bootstrap SDWP: `Posterior._sdwp_matrix` evaluates all agents and

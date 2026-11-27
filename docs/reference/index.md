@@ -11,6 +11,7 @@ package shown and is covered by the R1 test suite.
 | [`podrank.sim`](sim.md) | frozen reference worlds and scenario generators |
 | [`podrank.errors`](errors.md) | exception and warning types |
 | [`podrank.compare`](compare.md) | pod distributions, descriptors, block scoring, betting and the comparison state machine |
+| [`podrank.diagnostics`](diagnostics.md) | decisive-game log-loss, Brier, baselines and reliability bins |
 
 The top-level `podrank` package re-exports the data, rating and error names that
 R1 users need, plus the `sim` and `uncertainty` subpackages. Importing

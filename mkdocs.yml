@@ -28,6 +28,7 @@ nav:
       - podrank.sim: reference/sim.md
       - podrank.errors: reference/errors.md
       - podrank.compare: reference/compare.md
+      - podrank.diagnostics: reference/diagnostics.md
   - Glossary: glossary.md
   - Limitations: limitations.md
   - Decisions:

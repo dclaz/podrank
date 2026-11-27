@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from types import ModuleType
 
-from podrank import sim, uncertainty
+from podrank import diagnostics, sim, uncertainty
 from podrank._version import __version__
 from podrank.constants import N_SEATS
 from podrank.data import AgentRegistry, DeckRegistry, GameTable, Inclusion, validate
@@ -132,6 +132,7 @@ __all__ = [
     "ValidationReport",
     "__version__",
     "compare",
+    "diagnostics",
     "fit",
     "sim",
     "uncertainty",
