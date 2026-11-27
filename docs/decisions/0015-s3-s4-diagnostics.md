@@ -23,6 +23,22 @@ Pooled over held-out clusters: full `1.229599`, best baseline `theta_deck`,
 difference `-0.009173`, cluster SE `0.004940`, `not_worse=True`. The full model
 is not worse than the best baseline by more than two SE.
 
+### Whole-cluster CV
+
+`cluster_cv(..., folds=5)` on the same standard data (whole clusters assigned to
+folds before fitting, 2,263 held-out decisive games):
+
+| Fold | Train clusters | Scored | Full log-loss | Best baseline |
+|---:|---:|---:|---:|---|
+| 0 | 480 | 451 | 1.208926 | θ+deck 1.221539 |
+| 1 | 480 | 449 | 1.183161 | θ+deck 1.194774 |
+| 2 | 480 | 446 | 1.234047 | θ+deck 1.246063 |
+| 3 | 480 | 460 | 1.237182 | θ+deck 1.251290 |
+| 4 | 480 | 457 | 1.236828 | θ+deck 1.233854 |
+
+Pooled: full `1.222534`, best baseline `theta_deck`, difference `-0.009864`,
+cluster SE `0.004165`, `not_worse=True`. Both S3 evaluation modes pass.
+
 ## S4 sigma-beta
 
 Truth for the reference world is `σ_β = 0.5`; the acceptance range is
@@ -42,9 +58,12 @@ than hidden. Five-fold whole-cluster CV on the same grid selects `0.25`
 (log-loss `1.221791` vs `1.222534` at 0.5, `1.226316` at 1.0 and `1.227910` at
 2.0), which is inside `[0.25, 1.0]`.
 
-S4 acceptance is recorded on the cluster-CV selector; the Laplace-evidence
-result is recorded as a discrepancy for review. No prior, world or tolerance was
-changed to force agreement.
+**S4 acceptance status: unresolved on the Laplace-evidence selector.** The
+evidence selector chooses 2.0, outside the required two-times range; the
+cluster-CV selector chooses 0.25 and is inside the range. This is recorded as an
+explicit S4 evidence miss, not hidden. No prior, world or tolerance was changed
+to force agreement. If S4 is interpreted as requiring the evidence selector
+specifically, P4 remains partially unresolved on S4.
 
 ## Consequences
 

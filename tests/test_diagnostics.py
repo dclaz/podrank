@@ -8,6 +8,7 @@ import pytest
 
 from podrank import GameTable, ModelSpec, fit, sim
 from podrank.diagnostics import (
+    cluster_cv,
     forward_split,
     log_evidence,
     posterior_predictive,
@@ -107,3 +108,18 @@ def test_sigma_beta_evidence_and_selection() -> None:
     assert ModelSpec(sigma_beta=1.0).sigma_beta == 1.0
     with pytest.raises(ValueError, match="sigma_beta"):
         ModelSpec(sigma_beta=0.0)
+
+
+def test_whole_cluster_cv_on_doc_tiny() -> None:
+    world = sim.reference_world("doc_tiny")
+    report = cluster_cv(
+        GameTable.from_records(world.game_rows()),
+        world.agent_registry(),
+        world.deck_registry(),
+        folds=5,
+    )
+    assert len(report.folds) == 5
+    assert report.full_log_loss is not None
+    assert report.best_baseline in {"uniform", "seat", "theta", "theta_deck"}
+    assert report.not_worse is not None
+    assert sum(fold.scored_games for fold in report.folds) == 223

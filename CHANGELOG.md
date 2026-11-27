@@ -125,7 +125,11 @@ semantic versioning.
 - `ModelSpec.sigma_beta` is persisted in the posterior archive.
 - P4 reports: markdown renderers, optional matplotlib reliability/PPC plots, and
   the `podrank calibrate --world …` CLI entry point.
-- S2a NumPyro/SBC reference and S3/S4 studies recorded in ADRs 0015–0016.
+- Whole-cluster K-fold CV evaluation (`cluster_cv`) added; S3 now reports both
+  CV and forward split.
+- S2a NumPyro/SBC reference and S3/S4 studies recorded in ADRs 0015–0016. S4's
+  Laplace-evidence selector misses the 2× range and is recorded as an explicit
+  unresolved evidence miss; cluster CV passes.
 - Field context/recipe validation tests cover the malformed-context and
   malformed-recipe branches.
 - Batched bootstrap SDWP: `Posterior._sdwp_matrix` evaluates all agents and
