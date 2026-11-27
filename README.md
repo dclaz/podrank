@@ -35,8 +35,9 @@ run is still required, and end-to-end time is currently dominated by I0 (ADR
 0002). The 16-core reference benchmark remains pending. The R2 comparison core is implemented: canonical pod distributions, block
 descriptors, block scoring, fixed-mixture betting, the `Comparison` state
 machine (validation, resolution, consumption, invalidation and revisioned
-export), confidence sequences, full reports and schema-1 persistence. The full predefined-world S5/S11 run is recorded in ADR 0013; real-log
-validation remains an open R2 release item.
+export), confidence sequences, full reports and schema-1 persistence. The full predefined-world S5/S11 run is recorded in ADR 0013 and the S6
+power/cost report in ADR 0014; real-log validation remains an open R2 release
+item.
 Implementation phases follow [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) §15.
 
 ## Development

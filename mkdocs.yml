@@ -46,6 +46,7 @@ nav:
       - Drop Windows support: decisions/0011-drop-windows-support.md
       - Reduced S5/S11 run: decisions/0012-reduced-s5-s11.md
       - Full S5/S11 run: decisions/0013-full-s5-s11.md
+      - S6 power and cost: decisions/0014-s6-power-cost.md
 markdown_extensions:
   - admonition
   - attr_list

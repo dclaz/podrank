@@ -391,3 +391,58 @@ __all__ = [
     "run_s11_cell",
     "s5_cells",
 ]
+
+
+@dataclass(frozen=True, slots=True)
+class S6Result:
+    cell: S5Cell
+    replications: int
+    power: float
+    mean_blocks: float
+    median_blocks: float
+    censored_fraction: float
+
+
+def run_s6_cell(
+    *,
+    design: Design,
+    mean: float,
+    rho: float,
+    replications: int,
+    blocks: int,
+    seed: int,
+    alpha: float = 0.05,
+) -> S6Result:
+    world = reference_compare_world("cmp_effect")
+    target = next(cell for cell in world.cells if abs(cell.mean - mean) < 1e-15)
+    theta = target.theta_a(design)
+    threshold = 1.0 / alpha
+    x_min = -0.25 if design == "duplicate" else -1.0
+    rng = np.random.default_rng(seed)
+    used: list[int] = []
+    hits = 0
+    for _ in range(replications):
+        up, _low, _failed = block_scores(
+            rng,
+            design=design,
+            mean=mean,
+            rho=rho,
+            failure="none",
+            blocks=blocks,
+            world=world,
+            theta_a=theta,
+        )
+        hit = _crossing(up, 0.5 / (0.0 - x_min), threshold, 0.0, upper=True)
+        if hit is None:
+            used.append(blocks)
+        else:
+            hits += 1
+            used.append(hit + 1)
+    return S6Result(
+        S5Cell(f"s6:{design}:rho{rho}:mu{mean}", Superiority(0.0), mean, design, rho, "none"),
+        replications,
+        hits / replications,
+        float(np.mean(used)),
+        float(np.median(used)),
+        sum(1 for value in used if value == blocks) / replications,
+    )
