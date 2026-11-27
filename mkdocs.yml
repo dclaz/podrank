@@ -48,6 +48,8 @@ nav:
       - Reduced S5/S11 run: decisions/0012-reduced-s5-s11.md
       - Full S5/S11 run: decisions/0013-full-s5-s11.md
       - S6 power and cost: decisions/0014-s6-power-cost.md
+      - S3 forward split and S4 sigma-beta: decisions/0015-s3-s4-diagnostics.md
+      - S2a NumPyro reference: decisions/0016-s2a-numpyro.md
 markdown_extensions:
   - admonition
   - attr_list

@@ -15,6 +15,7 @@ class ModelSpec:
     weak_ratio: float = 1.0
     tol_eig: float = 1e-10
     tol_alias: float = 1e-6
+    sigma_beta: float = 0.5
     max_params: int = 10_000
     max_dense_bytes: int = 2 * 2**30
 
@@ -29,6 +30,8 @@ class ModelSpec:
             raise ValueError("tol_eig must satisfy 0 < tol_eig < 1")
         if not math.isfinite(self.tol_alias) or not 0 <= self.tol_alias < 1:
             raise ValueError("tol_alias must satisfy 0 <= tol_alias < 1")
+        if not math.isfinite(self.sigma_beta) or self.sigma_beta <= 0:
+            raise ValueError("sigma_beta must be finite and > 0")
         if isinstance(self.max_params, bool) or not isinstance(self.max_params, int):
             raise ValueError("max_params must be a positive integer")
         if self.max_params <= 0:

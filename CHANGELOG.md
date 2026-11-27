@@ -118,9 +118,14 @@ semantic versioning.
   replications with two recorded flags; the full predefined-world reference run
   remains open (ADR 0012).
 - R2 public-name scope guard and comparison how-to/reference docs.
-- P4 R1 predictive diagnostics: `pr.diagnostics.predictive_quality` reports
-decisive-game log-loss and Brier (uniform, seat-only, θ-only, θ+deck, full),
-cluster-level means, exclusions and reliability bins with tests on `doc_tiny`.
+- P4 R1 diagnostics: `predictive_quality` (log-loss/Brier, baselines,
+  cluster-level means, reliability), `posterior_predictive` (agent/deck/seat/tag
+  z flags), `forward_split` (burn-in, absent-entity exclusion), `tune_sigma_beta`
+  (Laplace evidence) and `tune_sigma_beta_cv` (whole-cluster CV).
+- `ModelSpec.sigma_beta` is persisted in the posterior archive.
+- P4 reports: markdown renderers, optional matplotlib reliability/PPC plots, and
+  the `podrank calibrate --world …` CLI entry point.
+- S2a NumPyro/SBC reference and S3/S4 studies recorded in ADRs 0015–0016.
 - Field context/recipe validation tests cover the malformed-context and
   malformed-recipe branches.
 - Batched bootstrap SDWP: `Posterior._sdwp_matrix` evaluates all agents and

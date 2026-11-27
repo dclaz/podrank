@@ -34,7 +34,7 @@ from podrank.rating.spec import ModelSpec
 from podrank.types import ClusterKey
 
 
-def _precision_vector(index: ParameterIndex) -> np.ndarray:
+def _precision_vector(index: ParameterIndex, spec: ModelSpec) -> np.ndarray:
     precision = np.zeros(len(index), dtype=np.float64)
     for name in index.names:
         if name.startswith("theta["):
@@ -44,7 +44,7 @@ def _precision_vector(index: ParameterIndex) -> np.ndarray:
         elif name.startswith("mu["):
             precision[index.index(name)] = 1.0
         elif name.startswith("delta["):
-            precision[index.index(name)] = 4.0
+            precision[index.index(name)] = 1.0 / (spec.sigma_beta**2)
         elif name == "eta":
             precision[index.index(name)] = 100.0
         else:  # pragma: no cover - guarded by ParameterIndex
@@ -213,7 +213,7 @@ def fit(
     )
     _memory_preflight(len(index), spec)
     patterns = build_patterns(pipeline.likelihood_rows, index, decks, spec)
-    precision = _precision_vector(index)
+    precision = _precision_vector(index, spec)
     initial = _warm_start(index, warm_start)
     cluster_values: dict[ClusterKey, list[str | None]] = {}
     for row in pipeline.likelihood_rows:

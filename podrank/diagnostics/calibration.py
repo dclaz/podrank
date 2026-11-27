@@ -34,6 +34,7 @@ class CalibrationReport:
     brier: dict[str, float | None]
     cluster_log_loss: dict[str, float | None]
     cluster_brier: dict[str, float | None]
+    cluster_values: dict[str, tuple[float, ...]]
     reliability: tuple[ReliabilityBin, ...]
 
 
@@ -185,6 +186,7 @@ def predictive_quality(
             name: (float(np.mean(values)) if values else None)
             for name, values in cluster_brier.items()
         },
+        cluster_values={name: tuple(values) for name, values in cluster_loss.items()},
         reliability=tuple(bins),
     )
 

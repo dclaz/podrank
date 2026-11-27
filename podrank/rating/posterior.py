@@ -983,6 +983,7 @@ class Posterior:
                 "weak_ratio": self.spec.weak_ratio,
                 "tol_eig": self.spec.tol_eig,
                 "tol_alias": self.spec.tol_alias,
+                "sigma_beta": self.spec.sigma_beta,
                 "max_params": self.spec.max_params,
                 "max_dense_bytes": self.spec.max_dense_bytes,
             },
@@ -1179,6 +1180,7 @@ class Posterior:
             weak_ratio=float(spec_payload["weak_ratio"]),
             tol_eig=float(spec_payload["tol_eig"]),
             tol_alias=float(spec_payload["tol_alias"]),
+            sigma_beta=float(spec_payload.get("sigma_beta", 0.5)),
             max_params=int(spec_payload["max_params"]),
             max_dense_bytes=int(spec_payload["max_dense_bytes"]),
         )
