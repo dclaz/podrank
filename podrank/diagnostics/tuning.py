@@ -36,7 +36,13 @@ def log_evidence(post: Any) -> float:
     logdet = 2.0 * float(np.sum(np.log(np.diag(factor))))
     parameter_count = hessian.shape[0]
     value = objective(post.mode, post.patterns, post.precision)
-    return float(-float(value) + 0.5 * parameter_count * math.log(2.0 * math.pi) - 0.5 * logdet)
+    prior_normalisation = -0.5 * float(np.sum(np.log(2.0 * math.pi / precision)))
+    return float(
+        -float(value)
+        + prior_normalisation
+        + 0.5 * parameter_count * math.log(2.0 * math.pi)
+        - 0.5 * logdet
+    )
 
 
 def tune_sigma_beta(

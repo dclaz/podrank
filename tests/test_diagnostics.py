@@ -123,3 +123,14 @@ def test_whole_cluster_cv_on_doc_tiny() -> None:
     assert report.best_baseline in {"uniform", "seat", "theta", "theta_deck"}
     assert report.not_worse is not None
     assert sum(fold.scored_games for fold in report.folds) == 223
+
+
+def test_sigma_beta_evidence_selects_reference_truth() -> None:
+    world = sim.reference_world("standard")
+    selection = tune_sigma_beta(
+        GameTable.from_records(world.game_rows()),
+        world.agent_registry(),
+        world.deck_registry(),
+        grid=(0.25, 0.5, 1.0, 2.0),
+    )
+    assert selection.best.sigma_beta == 0.5

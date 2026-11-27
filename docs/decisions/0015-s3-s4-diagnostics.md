@@ -44,28 +44,41 @@ cluster SE `0.004165`, `not_worse=True`. Both S3 evaluation modes pass.
 Truth for the reference world is `σ_β = 0.5`; the acceptance range is
 `[0.25, 1.0]`.
 
-Laplace evidence over `[0.25, 0.5, 1.0, 2.0]` selects `2.0`:
+The first implementation omitted the prior normalisation
+`-0.5·Σ log(2π/λ_i)` from the Laplace evidence. That made the evidence favour
+large `σ_β`. With the term restored, the same standard dataset gives:
 
 ```text
-0.25  -2790.4356
-0.50  -2739.3558
-1.00  -2718.7982
-2.00  -2710.9555
+0.25  -2812.9325
+0.50  -2795.1238   <- selected
+1.00  -2807.8372
+2.00  -2833.2656
 ```
 
-That is outside the two-times range, so it is reported as an evidence miss rather
-than hidden. Five-fold whole-cluster CV on the same grid selects `0.25`
-(log-loss `1.221791` vs `1.222534` at 0.5, `1.226316` at 1.0 and `1.227910` at
-2.0), which is inside `[0.25, 1.0]`.
+Laplace evidence now selects `0.5`, exactly the generating value. Five
+independent outcome/composition replications (`standard_rows` with run seeds
+7000–7004, same true deck effects) both selectors within the two-times range:
 
-**S4 acceptance status: unresolved on the Laplace-evidence selector.** The
-evidence selector chooses 2.0, outside the required two-times range; the
-cluster-CV selector chooses 0.25 and is inside the range. This is recorded as an
-explicit S4 evidence miss, not hidden. No prior, world or tolerance was changed
-to force agreement. If S4 is interpreted as requiring the evidence selector
-specifically, P4 remains partially unresolved on S4.
+| Replication | Evidence | Cluster CV |
+|---:|---:|---:|
+| 0 | 0.5 | 0.5 |
+| 1 | 0.5 | 0.5 |
+| 2 | 0.5 | 0.5 |
+| 3 | 0.5 | 0.25 |
+| 4 | 0.5 | 0.25 |
+
+The earlier evidence miss was an implementation defect in the evidence
+constant, not a property of the model. No prior, world or tolerance was changed
+to force agreement.
 
 ## Consequences
+
+- S3 passes the "not worse than best baseline" report criterion in both forward
+  and whole-cluster CV modes.
+- S4 passes: evidence selects 0.5 on the reference dataset and on all five
+  replications; cluster CV selects 0.25–0.5, also inside `[0.25, 1.0]`.
+- `ModelSpec.sigma_beta` is persisted in the posterior archive (additive
+  optional field, default 0.5 for older payloads).
 
 - S3 passes the "not worse than best baseline" report criterion.
 - S4 passes via cluster CV within 2× of truth; evidence selection is a reported

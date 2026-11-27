@@ -127,9 +127,9 @@ semantic versioning.
   the `podrank calibrate --world …` CLI entry point.
 - Whole-cluster K-fold CV evaluation (`cluster_cv`) added; S3 now reports both
   CV and forward split.
-- S2a NumPyro/SBC reference and S3/S4 studies recorded in ADRs 0015–0016. S4's
-  Laplace-evidence selector misses the 2× range and is recorded as an explicit
-  unresolved evidence miss; cluster CV passes.
+- S2a NumPyro/SBC reference and S3/S4 studies recorded in ADRs 0015–0016. S4's Laplace evidence now includes the prior normalisation, selects the true
+  sigma_beta=0.5 on the reference dataset and five replications, and cluster CV
+  remains within the 2x range.
 - Field context/recipe validation tests cover the malformed-context and
   malformed-recipe branches.
 - Batched bootstrap SDWP: `Posterior._sdwp_matrix` evaluates all agents and
